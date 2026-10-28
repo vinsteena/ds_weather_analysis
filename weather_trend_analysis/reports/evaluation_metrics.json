@@ -1,0 +1,76 @@
+{
+  "temperature_mean": {
+    "unit": "\u00b0C",
+    "r2_score": 0.9219,
+    "rmse": 0.704,
+    "mae": 0.537,
+    "baseline_r2": 0.9442,
+    "baseline_rmse": 0.595,
+    "baseline_mae": 0.449,
+    "rmse_improvement_pct": -18.37
+  },
+  "relative_humidity": {
+    "unit": "%",
+    "r2_score": 0.9014,
+    "rmse": 5.059,
+    "mae": 3.803,
+    "baseline_r2": 0.8996,
+    "baseline_rmse": 5.105,
+    "baseline_mae": 3.858,
+    "rmse_improvement_pct": 0.91
+  },
+  "dew_point": {
+    "unit": "\u00b0C",
+    "r2_score": 0.8633,
+    "rmse": 1.266,
+    "mae": 0.895,
+    "baseline_r2": 0.8502,
+    "baseline_rmse": 1.325,
+    "baseline_mae": 0.905,
+    "rmse_improvement_pct": 4.47
+  },
+  "vapor_pressure": {
+    "unit": "hPa",
+    "r2_score": 0.883,
+    "rmse": 1.34,
+    "mae": 1.0,
+    "baseline_r2": 0.8717,
+    "baseline_rmse": 1.403,
+    "baseline_mae": 1.011,
+    "rmse_improvement_pct": 4.52
+  },
+  "surface_pressure": {
+    "unit": "hPa",
+    "r2_score": 0.917,
+    "rmse": 0.726,
+    "mae": 0.576,
+    "baseline_r2": 0.91,
+    "baseline_rmse": 0.756,
+    "baseline_mae": 0.589,
+    "rmse_improvement_pct": 3.98
+  },
+  "wind_speed": {
+    "unit": "km/h",
+    "r2_score": 0.8043,
+    "rmse": 1.996,
+    "mae": 1.596,
+    "baseline_r2": 0.7884,
+    "baseline_rmse": 2.076,
+    "baseline_mae": 1.609,
+    "rmse_improvement_pct": 3.84
+  },
+  "rain_classification": {
+    "accuracy": 0.888,
+    "precision": 0.8868,
+    "recall": 0.9171,
+    "f1_score": 0.9017,
+    "roc_auc": 0.9626
+  },
+  "rain_combined": {
+    "unit": "mm",
+    "rmse": 4.471,
+    "mae": 2.579,
+    "rain_days_detected": 212,
+    "rain_days_actual": 205
+  }
+}

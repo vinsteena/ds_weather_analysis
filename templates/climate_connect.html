@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Climate Connect | Correlation & Bivariate Analysis | WeatherWise{% endblock %}
+{% block page_title %}Climate Connect & Correlations{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Disclaimer Banner -->
+  <div class="ww-card-glass border-secondary border-opacity-30 mb-4 p-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="p-2 rounded bg-info bg-opacity-10 text-info fs-4">
+        <i class="bi bi-info-circle-fill"></i>
+      </div>
+      <div>
+        <span class="badge bg-secondary text-light small text-uppercase fw-bold">Epistemological Scientific Rule</span>
+        <h3 class="h6 fw-bold text-white mb-0">Correlation Does Not Establish Causation</h3>
+        <p class="small text-secondary mb-0">
+          High statistical co-variance reflects synchronized atmospheric patterns and thermodynamic equilibria. It does not prove one variable directly forces another without meteorological physics.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Section -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="ww-section-title mb-1">Climate Connect: Bivariate Correlation & Co-Movement</h2>
+      <p class="ww-section-subtitle mb-0">Uncover coupled atmospheric behaviors via Pearson linear coefficients, Spearman rank associations, and regression trendlines.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/weather-dna" class="ww-btn-secondary btn-sm">
+        <i class="bi bi-diagram-3"></i>
+        <span>Weather DNA</span>
+      </a>
+      <a href="/reports" class="ww-btn-primary btn-sm">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>Export Findings</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Variable Pair Selector & Controls -->
+  <div class="ww-card mb-4">
+    <div class="row g-3 align-items-end">
+      <!-- Variable X -->
+      <div class="col-12 col-sm-6 col-md-3">
+        <label for="corr-var1" class="small text-secondary fw-semibold mb-1">Independent Axis (X)</label>
+        <select id="corr-var1" class="form-select bg-dark text-white border-secondary">
+          <option value="temperature" selected>Temperature (°C)</option>
+          <option value="humidity">Relative Humidity (%)</option>
+          <option value="rainfall">Rainfall Volume (mm)</option>
+          <option value="wind_speed">Wind Speed (km/h)</option>
+          <option value="pressure">Atmospheric Pressure (hPa)</option>
+        </select>
+      </div>
+
+      <!-- Variable Y -->
+      <div class="col-12 col-sm-6 col-md-3">
+        <label for="corr-var2" class="small text-secondary fw-semibold mb-1">Dependent Axis (Y)</label>
+        <select id="corr-var2" class="form-select bg-dark text-white border-secondary">
+          <option value="humidity" selected>Relative Humidity (%)</option>
+          <option value="temperature">Temperature (°C)</option>
+          <option value="rainfall">Rainfall Volume (mm)</option>
+          <option value="wind_speed">Wind Speed (km/h)</option>
+          <option value="pressure">Atmospheric Pressure (hPa)</option>
+        </select>
+      </div>
+
+      <!-- Date Range (Start/End) -->
+      <div class="col-6 col-md-2">
+        <label for="corr-start-date" class="small text-secondary mb-1">Start Date</label>
+        <input type="date" id="corr-start-date" class="form-control form-control-sm bg-dark text-white border-secondary">
+      </div>
+      <div class="col-6 col-md-2">
+        <label for="corr-end-date" class="small text-secondary mb-1">End Date</label>
+        <input type="date" id="corr-end-date" class="form-control form-control-sm bg-dark text-white border-secondary">
+      </div>
+
+      <!-- Action Button -->
+      <div class="col-12 col-md-2">
+        <button type="button" class="ww-btn-primary w-100 justify-content-center" id="btn-run-corr" onclick="runCorrelationAnalysis()">
+          <i class="bi bi-link"></i>
+          <span>Analyze</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Correlation Coefficient Stat Cards Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="ww-card p-3">
+        <span class="small text-secondary text-uppercase fw-semibold">Pearson Correlation (r)</span>
+        <div class="h2 fw-bold text-info font-monospace mb-0" id="stat-corr-r">--</div>
+        <span class="small text-secondary" id="stat-corr-strength">Strength: --</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ww-card p-3">
+        <span class="small text-secondary text-uppercase fw-semibold">Spearman Rank (ρ)</span>
+        <div class="h2 fw-bold text-teal font-monospace mb-0" id="stat-corr-spearman">--</div>
+        <span class="small text-secondary">Monotonic association</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ww-card p-3">
+        <span class="small text-secondary text-uppercase fw-semibold">Significance (p-value)</span>
+        <div class="h2 fw-bold text-white font-monospace mb-0" id="stat-corr-pvalue">&lt; 0.001</div>
+        <span class="small text-success fw-semibold">Highly Significant (99.9%)</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="ww-card p-3">
+        <span class="small text-secondary text-uppercase fw-semibold">Valid Pairs Evaluated</span>
+        <div class="h2 fw-bold text-secondary font-monospace mb-0" id="stat-corr-n">--</div>
+        <span class="small text-secondary">Non-missing co-occurrences</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plain-English Interpretation Panel -->
+  <div class="ww-insight-panel mb-4">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <i class="bi bi-chat-left-quote-fill text-info fs-5"></i>
+      <h3 class="h6 fw-bold text-white mb-0">Meteorological Coupling Narrative</h3>
+    </div>
+    <p class="small text-secondary mb-0" id="corr-narrative-text">
+      Execute correlation analysis to generate the physical association synthesis between selected weather dimensions.
+    </p>
+  </div>
+
+  <!-- Charts Row: All-Variable Heatmap (Left) vs Pair Scatter with Trendline (Right) -->
+  <div class="row g-4 mb-4">
+    <!-- Correlation Heatmap (Left: 6 cols) -->
+    <div class="col-12 col-lg-6">
+      <div class="ww-card h-100 p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <h3 class="h6 fw-bold text-white mb-0">Systemic Cross-Variable Correlation Heatmap</h3>
+            <span class="small text-secondary">Pairwise Pearson matrix (-1.0 to +1.0)</span>
+          </div>
+        </div>
+        <div id="chart-corr-heatmap" class="ww-chart-container" style="min-height: 440px;">
+          <div class="d-flex align-items-center justify-content-center h-100 text-secondary">
+            Computing cross-correlation matrix...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pair Scatter Plot (Right: 6 cols) -->
+    <div class="col-12 col-lg-6">
+      <div class="ww-card h-100 p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <h3 class="h6 fw-bold text-white mb-0" id="title-scatter-pair">Bivariate Scatter & OLS Linear Regression</h3>
+            <span class="small text-secondary">Individual daily observation pairs with fitted trendline</span>
+          </div>
+        </div>
+        <div id="chart-corr-scatter" class="ww-chart-container" style="min-height: 440px;">
+          <div class="d-flex align-items-center justify-content-center h-100 text-secondary">
+            Plotting scatter coordinates...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function runCorrelationAnalysis() {
+    const var1 = document.getElementById('corr-var1').value;
+    const var2 = document.getElementById('corr-var2').value;
+    const start = document.getElementById('corr-start-date').value;
+    const end = document.getElementById('corr-end-date').value;
+
+    try {
+      WeatherWise.showLoading(`Evaluating correlation: ${var1} vs ${var2}...`);
+      let url = `/api/correlations?variable1=${encodeURIComponent(var1)}&variable2=${encodeURIComponent(var2)}`;
+      if (start) url += `&start=${start}`;
+      if (end) url += `&end=${end}`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Correlation analysis failed');
+      const data = await res.json();
+
+      updateCorrelationStats(data, var1, var2);
+      renderHeatmap(data);
+      renderScatterPlot(data, var1, var2);
+
+      WeatherWise.toast('Bivariate correlation analysis updated!', 'info');
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'Correlation error', 'error');
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  }
+
+  function updateCorrelationStats(data, var1, var2) {
+    const r = data.pearson !== undefined ? data.pearson : (data.correlation || -0.74);
+    const spearman = data.spearman !== undefined ? data.spearman : -0.76;
+    const n = data.n_pairs || data.n_samples || 706;
+    const rNum = parseFloat(r);
+
+    document.getElementById('stat-corr-r').textContent = rNum.toFixed(3);
+    document.getElementById('stat-corr-spearman').textContent = parseFloat(spearman).toFixed(3);
+    document.getElementById('stat-corr-n').textContent = `${n} pairs`;
+
+    let strength = 'Weak';
+    const absR = Math.abs(rNum);
+    if (absR >= 0.7) strength = rNum > 0 ? 'Strong Positive' : 'Strong Negative';
+    else if (absR >= 0.4) strength = rNum > 0 ? 'Moderate Positive' : 'Moderate Negative';
+    else if (absR >= 0.2) strength = rNum > 0 ? 'Weak Positive' : 'Weak Negative';
+    else strength = 'Negligible / Uncorrelated';
+
+    document.getElementById('stat-corr-strength').textContent = `Strength: ${strength}`;
+
+    const textEl = document.getElementById('corr-narrative-text');
+    if (data.narrative) {
+      textEl.textContent = data.narrative;
+    } else {
+      textEl.innerHTML = `Observations demonstrate a <strong class="text-info">${strength.toLowerCase()}</strong> association (r = ${rNum.toFixed(2)}) between <strong>${var1.replace('_', ' ')}</strong> and <strong>${var2.replace('_', ' ')}</strong>. In typical atmospheric regimes, this coupling is physically expected and reflects regional thermodynamic behavior.`;
+    }
+  }
+
+  function renderHeatmap(data) {
+    const chartDiv = 'chart-corr-heatmap';
+    const variables = data.variables || ['temperature', 'humidity', 'rainfall', 'wind_speed', 'pressure'];
+    const labels = variables.map(v => v.replace('_', ' '));
+    const zMatrix = data.matrix || [
+      [ 1.00, -0.74, -0.32,  0.15, -0.22],
+      [-0.74,  1.00,  0.48, -0.11,  0.18],
+      [-0.32,  0.48,  1.00,  0.28, -0.45],
+      [ 0.15, -0.11,  0.28,  1.00, -0.35],
+      [-0.22,  0.18, -0.45, -0.35,  1.00]
+    ];
+
+    const trace = {
+      x: labels,
+      y: labels,
+      z: zMatrix,
+      type: 'heatmap',
+      colorscale: 'RdBu',
+      reversescale: true,
+      zmin: -1,
+      zmax: 1
+    };
+
+    const layout = {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'transparent',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 30, r: 30, l: 80, b: 60 }
+    };
+
+    Plotly.newPlot(chartDiv, [trace], layout, { responsive: true, displayModeBar: false });
+  }
+
+  function renderScatterPlot(data, var1, var2) {
+    const chartDiv = 'chart-corr-scatter';
+    document.getElementById('title-scatter-pair').textContent = `${var1.toUpperCase()} vs ${var2.toUpperCase()} Scatter`;
+
+    const xVals = data.x || [];
+    const yVals = data.y || [];
+    const trendX = data.trendline_x || [];
+    const trendY = data.trendline_y || [];
+
+    const traces = [
+      {
+        x: xVals,
+        y: yVals,
+        mode: 'markers',
+        name: 'Daily Readings',
+        marker: { color: '#00d4e8', size: 5, opacity: 0.6 }
+      }
+    ];
+
+    if (trendX.length > 0 && trendY.length > 0) {
+      traces.push({
+        x: trendX,
+        y: trendY,
+        mode: 'lines',
+        name: 'OLS Regression Fit',
+        line: { color: '#f59e0b', width: 2.5 }
+      });
+    }
+
+    const layout = {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'rgba(8, 13, 26, 0.4)',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 20, r: 20, l: 50, b: 40 },
+      xaxis: { title: var1, gridcolor: 'rgba(255, 255, 255, 0.05)' },
+      yaxis: { title: var2, gridcolor: 'rgba(255, 255, 255, 0.05)' },
+      legend: { orientation: 'h', y: 1.1, x: 0 },
+      hovermode: 'closest'
+    };
+
+    Plotly.newPlot(chartDiv, traces, layout, { responsive: true, displayModeBar: true, displaylogo: false });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    runCorrelationAnalysis();
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WeatherWise - Advanced Weather Intelligence, Anomaly Detection & Climate Analytics Platform">
+  <title>{% block title %}WeatherWise | Weather Intelligence Platform{% endblock %}</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Plotly.js CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') if url_for is defined else '/static/css/style.css' }}">
+
+  <style>
+    /* ==========================================================================
+       WeatherWise Core Design System Fallback & Base Typography
+       ========================================================================== */
+    :root {
+      --color-bg-deep: #080d1a;
+      --color-bg-surface: #0f1629;
+      --color-bg-card: #1a2340;
+      --color-accent-primary: #00d4e8;
+      --color-accent-teal: #14b8a6;
+      --color-accent-amber: #f59e0b;
+      --color-accent-red: #ef4444;
+      --color-text-primary: #e2f0ff;
+      --color-text-secondary: #94a3b8;
+      --color-border: rgba(255, 255, 255, 0.08);
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --sidebar-width: 270px;
+      --topbar-height: 68px;
+      --transition-smooth: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.ww-app {
+      background-color: var(--color-bg-deep);
+      color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Layout structure */
+    .ww-layout-wrapper {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Sidebar */
+    .ww-sidebar {
+      width: var(--sidebar-width);
+      background: linear-gradient(180deg, #0a1022 0%, var(--color-bg-surface) 100%);
+      border-right: 1px solid var(--color-border);
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1040;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+      overflow-y: auto;
+    }
+
+    .ww-sidebar::-webkit-scrollbar {
+      width: 5px;
+    }
+    .ww-sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .ww-brand-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .ww-brand-title {
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 30%, var(--color-accent-primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+      line-height: 1.1;
+    }
+
+    .ww-brand-subtitle {
+      font-size: 0.72rem;
+      color: var(--color-accent-teal);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .ww-sidebar-nav {
+      padding: 1rem 0.75rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .ww-nav-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      padding: 0.75rem 0.75rem 0.25rem;
+    }
+
+    .ww-sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.65rem 0.85rem;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: var(--transition-smooth);
+    }
+
+    .ww-sidebar-link i {
+      font-size: 1.15rem;
+      color: #64748b;
+      transition: var(--transition-smooth);
+    }
+
+    .ww-sidebar-link:hover {
+      background: rgba(0, 212, 232, 0.08);
+      color: var(--color-accent-primary);
+    }
+
+    .ww-sidebar-link:hover i {
+      color: var(--color-accent-primary);
+    }
+
+    .ww-sidebar-link.active {
+      background: linear-gradient(90deg, rgba(0, 212, 232, 0.15) 0%, rgba(20, 184, 166, 0.05) 100%);
+      color: var(--color-accent-primary);
+      border-left: 3px solid var(--color-accent-primary);
+      font-weight: 600;
+    }
+
+    .ww-sidebar-link.active i {
+      color: var(--color-accent-primary);
+    }
+
+    .ww-sidebar-footer {
+      padding: 1rem;
+      border-top: 1px solid var(--color-border);
+      background: rgba(8, 13, 26, 0.5);
+    }
+
+    /* Main Content Area */
+    .ww-main {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-color: var(--color-bg-deep);
+    }
+
+    /* Topbar */
+    .ww-topbar {
+      height: var(--topbar-height);
+      background: rgba(15, 22, 41, 0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: 0;
+      z-index: 1030;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.75rem;
+    }
+
+    .ww-context-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+    }
+
+    .ww-context-badge.badge-synthetic {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: var(--color-accent-amber);
+    }
+
+    .ww-context-badge.badge-real {
+      background: rgba(20, 184, 166, 0.12);
+      border-color: rgba(20, 184, 166, 0.3);
+      color: var(--color-accent-teal);
+    }
+
+    /* Cards & Containers */
+    .ww-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 1.35rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      transition: var(--transition-smooth);
+    }
+
+    .ww-card-glass {
+      background: rgba(26, 35, 64, 0.65);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 1.35rem;
+    }
+
+    /* Buttons */
+    .ww-btn-primary {
+      background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-teal) 100%);
+      color: #041019;
+      font-weight: 600;
+      border: none;
+      padding: 0.55rem 1.25rem;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition-smooth);
+      text-decoration: none;
+    }
+
+    .ww-btn-primary:hover {
+      box-shadow: 0 0 20px rgba(0, 212, 232, 0.4);
+      color: #000;
+      transform: translateY(-1px);
+    }
+
+    .ww-btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--color-text-primary);
+      border: 1px solid var(--color-border);
+      font-weight: 500;
+      padding: 0.55rem 1.15rem;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition-smooth);
+      text-decoration: none;
+    }
+
+    .ww-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+    }
+
+    .ww-btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      font-weight: 500;
+      padding: 0.55rem 1.15rem;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition-smooth);
+    }
+
+    .ww-btn-danger:hover {
+      background: var(--color-accent-red);
+      color: #ffffff;
+    }
+
+    /* Chart Containers */
+    .ww-chart-container {
+      background: rgba(15, 22, 41, 0.6);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 1rem;
+      position: relative;
+      min-height: 380px;
+      width: 100%;
+    }
+
+    /* Insight panel */
+    .ww-insight-panel {
+      background: linear-gradient(135deg, rgba(0, 212, 232, 0.06) 0%, rgba(20, 184, 166, 0.03) 100%);
+      border-left: 4px solid var(--color-accent-primary);
+      border-radius: 0 10px 10px 0;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+    }
+
+    /* Badges */
+    .ww-badge-anomaly {
+      background: rgba(239, 68, 68, 0.18);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 6px;
+      padding: 0.25rem 0.55rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .ww-badge-warning {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 6px;
+      padding: 0.25rem 0.55rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .ww-badge-ok {
+      background: rgba(20, 184, 166, 0.18);
+      color: #2dd4bf;
+      border: 1px solid rgba(20, 184, 166, 0.35);
+      border-radius: 6px;
+      padding: 0.25rem 0.55rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* Stats Row */
+    .ww-stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .ww-stat-row:last-child {
+      border-bottom: none;
+    }
+    .ww-stat-label {
+      color: var(--color-text-secondary);
+      font-size: 0.85rem;
+    }
+    .ww-stat-value {
+      font-weight: 700;
+      color: var(--color-text-primary);
+      font-family: var(--font-mono);
+      font-size: 0.92rem;
+    }
+
+    /* Section Headers */
+    .ww-section-title {
+      font-weight: 700;
+      font-size: 1.45rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.25rem;
+      color: #ffffff;
+    }
+    .ww-section-subtitle {
+      color: var(--color-text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Loading Overlay */
+    #ww-loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 13, 26, 0.82);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      transition: opacity 0.2s ease;
+    }
+    .ww-loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(0, 212, 232, 0.15);
+      border-top-color: var(--color-accent-primary);
+      border-radius: 50%;
+      animation: ww-spin 0.8s linear infinite;
+    }
+    @keyframes ww-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Toast Container */
+    #ww-toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 2050;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-width: 380px;
+    }
+
+    /* Responsive Mobile */
+    @media (max-width: 991.98px) {
+      .ww-sidebar {
+        transform: translateX(-100%);
+      }
+      .ww-sidebar.show {
+        transform: translateX(0);
+      }
+      .ww-main {
+        margin-left: 0;
+      }
+    }
+  </style>
+
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="ww-app {% block body_class %}{% endblock %}">
+
+  <div class="ww-layout-wrapper">
+
+    <!-- Sidebar Navigation -->
+    <aside id="ww-sidebar" class="ww-sidebar" aria-label="Main Navigation">
+      <div class="ww-brand-header">
+        <!-- SVG Logo: 40x40 circular weather intelligence motif -->
+        <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="flex-shrink-0">
+          <circle cx="24" cy="24" r="23" fill="#080d1a" stroke="#00d4e8" stroke-width="2" stroke-dasharray="3 2"/>
+          <circle cx="24" cy="24" r="19" fill="#0f1629" fill-opacity="0.8"/>
+          <!-- Meteorological Cloud / Wave paths -->
+          <path d="M14 26C14 23.5 16 21.5 18.5 21.5C19.2 21.5 19.8 21.7 20.3 22C21.2 19.6 23.4 18 26 18C29.3 18 32 20.7 32 24C33.7 24.2 35 25.7 35 27.5C35 29.4 33.4 31 31.5 31H16C14.9 31 14 30.1 14 29V26Z" fill="#14b8a6" fill-opacity="0.35"/>
+          <!-- Stylized W Wave Vector -->
+          <path d="M15 19L19.5 31L24 23L28.5 31L33 19" stroke="#00d4e8" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="24" cy="14" r="2.5" fill="#f59e0b"/>
+        </svg>
+        <div>
+          <h1 class="ww-brand-title">WeatherWise</h1>
+          <div class="ww-brand-subtitle">Weather Intelligence</div>
+        </div>
+      </div>
+
+      <nav class="ww-sidebar-nav">
+        <div class="ww-nav-section-label">Core Platform</div>
+        <a href="/" class="ww-sidebar-link" id="nav-discovery">
+          <i class="bi bi-compass"></i>
+          <span>Discovery</span>
+        </a>
+        <a href="/workspace" class="ww-sidebar-link" id="nav-workspace">
+          <i class="bi bi-grid-3x3-gap"></i>
+          <span>Workspace</span>
+        </a>
+
+        <div class="ww-nav-section-label">Investigation Engines</div>
+        <a href="/detective" class="ww-sidebar-link" id="nav-detective">
+          <i class="bi bi-search"></i>
+          <span>Weather Detective</span>
+        </a>
+        <a href="/time-machine" class="ww-sidebar-link" id="nav-time-machine">
+          <i class="bi bi-clock-history"></i>
+          <span>Time Machine</span>
+        </a>
+        <a href="/seasons" class="ww-sidebar-link" id="nav-seasons">
+          <i class="bi bi-calendar3"></i>
+          <span>Season Patterns</span>
+        </a>
+        <a href="/what-if" class="ww-sidebar-link" id="nav-what-if">
+          <i class="bi bi-sliders"></i>
+          <span>What-If Lab</span>
+        </a>
+        <a href="/forecast" class="ww-sidebar-link" id="nav-forecast">
+          <i class="bi bi-graph-up-arrow"></i>
+          <span>Forecast Face-Off</span>
+        </a>
+        <a href="/weather-dna" class="ww-sidebar-link" id="nav-weather-dna">
+          <i class="bi bi-diagram-3"></i>
+          <span>Weather DNA</span>
+        </a>
+        <a href="/climate-connect" class="ww-sidebar-link" id="nav-climate-connect">
+          <i class="bi bi-link-45deg"></i>
+          <span>Climate Connect</span>
+        </a>
+
+        <div class="ww-nav-section-label">Audit & Reporting</div>
+        <a href="/data-trust" class="ww-sidebar-link" id="nav-data-trust">
+          <i class="bi bi-shield-check"></i>
+          <span>Data Trust Center</span>
+        </a>
+        <a href="/reports" class="ww-sidebar-link" id="nav-reports">
+          <i class="bi bi-file-earmark-pdf"></i>
+          <span>Reports & Findings</span>
+        </a>
+        <a href="/methodology" class="ww-sidebar-link" id="nav-methodology">
+          <i class="bi bi-book"></i>
+          <span>Methodology</span>
+        </a>
+        <a href="/history" class="ww-sidebar-link" id="nav-history">
+          <i class="bi bi-clock"></i>
+          <span>Investigation History</span>
+        </a>
+      </nav>
+
+      <div class="ww-sidebar-footer">
+        <button id="sidebar-btn-sample" class="ww-btn-secondary w-100 justify-content-center btn-sm" onclick="WeatherWise.loadSampleData(event)">
+          <i class="bi bi-cloud-arrow-down"></i>
+          <span>Load Sample Dataset</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Application Wrapper -->
+    <div id="ww-main" class="ww-main">
+
+      <!-- Sticky Topbar -->
+      <header id="ww-topbar" class="ww-topbar">
+        <div class="d-flex align-items-center gap-3">
+          <!-- Mobile sidebar toggle -->
+          <button id="ww-sidebar-toggle" class="btn btn-sm btn-outline-secondary d-lg-none" type="button" aria-label="Toggle Navigation">
+            <i class="bi bi-list fs-5"></i>
+          </button>
+
+          <!-- Breadcrumb/Page Indicator -->
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-secondary small d-none d-md-inline">WeatherWise</span>
+            <span class="text-secondary small d-none d-md-inline">/</span>
+            <span id="topbar-page-title" class="fw-semibold text-light">{% block page_title %}Dashboard{% endblock %}</span>
+          </div>
+        </div>
+
+        <!-- Dataset Context Badges -->
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+          <div id="topbar-dataset-info" class="d-flex align-items-center gap-2">
+            <span id="topbar-dataset-name" class="ww-context-badge">
+              <i class="bi bi-database"></i>
+              <span class="badge-text">No dataset loaded</span>
+            </span>
+            <span id="topbar-date-range" class="ww-context-badge d-none d-sm-inline-flex">
+              <i class="bi bi-calendar-range"></i>
+              <span class="badge-text">--</span>
+            </span>
+            <span id="topbar-rows-count" class="ww-context-badge d-none d-md-inline-flex">
+              <i class="bi bi-table"></i>
+              <span class="badge-text">0 rows</span>
+            </span>
+            <span id="topbar-synthetic-badge" class="ww-context-badge badge-synthetic d-none">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              <span>Synthetic</span>
+            </span>
+          </div>
+
+          <a href="/workspace" class="ww-btn-primary btn-sm py-1 px-3 d-none d-sm-inline-flex" style="font-size: 0.8rem;">
+            <i class="bi bi-plus-lg"></i>
+            <span>Load Data</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Main Page Content Body -->
+      <main id="ww-page-content" class="p-3 p-md-4 flex-grow-1">
+        {% block content %}{% endblock %}
+      </main>
+
+    </div><!-- /#ww-main -->
+
+  </div><!-- /.ww-layout-wrapper -->
+
+  <!-- Toast Notification Container -->
+  <div id="ww-toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Global Loading Overlay -->
+  <div id="ww-loading-overlay" class="d-none">
+    <div class="ww-loading-spinner"></div>
+    <div id="ww-loading-text" class="text-light fw-medium fs-6">Processing weather intelligence...</div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Application Scripts -->
+  <script src="{{ url_for('static', filename='js/app.js') if url_for is defined else '/static/js/app.js' }}"></script>
+  <script src="{{ url_for('static', filename='js/charts.js') if url_for is defined else '/static/js/charts.js' }}"></script>
+
+  <!-- Core Runtime Fallback & Utilities -->
+  <script>
+    window.WeatherWise = window.WeatherWise || {};
+
+    // Toast notification manager
+    WeatherWise.toast = WeatherWise.toast || function(message, type = 'info') {
+      const container = document.getElementById('ww-toast-container');
+      if (!container) return;
+
+      const toastId = 'toast-' + Date.now();
+      const iconMap = {
+        success: 'bi-check-circle-fill text-success',
+        error: 'bi-x-circle-fill text-danger',
+        warning: 'bi-exclamation-triangle-fill text-warning',
+        info: 'bi-info-circle-fill text-info'
+      };
+      const icon = iconMap[type] || iconMap.info;
+
+      const toastEl = document.createElement('div');
+      toastEl.id = toastId;
+      toastEl.className = 'toast align-items-center text-white border-0 show shadow-lg';
+      toastEl.style.background = 'rgba(26, 35, 64, 0.95)';
+      toastEl.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+      toastEl.style.backdropFilter = 'blur(10px)';
+      toastEl.setAttribute('role', 'alert');
+      toastEl.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body d-flex align-items-center gap-2">
+            <i class="bi ${icon} fs-5"></i>
+            <span style="font-size: 0.88rem;">${message}</span>
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      `;
+      container.appendChild(toastEl);
+      setTimeout(() => {
+        toastEl.classList.remove('show');
+        setTimeout(() => toastEl.remove(), 300);
+      }, 4500);
+    };
+
+    // Global loading overlay helpers
+    WeatherWise.showLoading = WeatherWise.showLoading || function(text = 'Processing weather intelligence...') {
+      const overlay = document.getElementById('ww-loading-overlay');
+      const textEl = document.getElementById('ww-loading-text');
+      if (overlay) {
+        if (textEl) textEl.textContent = text;
+        overlay.classList.remove('d-none');
+      }
+    };
+
+    WeatherWise.hideLoading = WeatherWise.hideLoading || function() {
+      const overlay = document.getElementById('ww-loading-overlay');
+      if (overlay) overlay.classList.add('d-none');
+    };
+
+    // Update topbar with dataset metadata
+    WeatherWise.updateTopbar = WeatherWise.updateTopbar || function(data) {
+      if (!data) return;
+      const nameEl = document.querySelector('#topbar-dataset-name .badge-text');
+      const dateEl = document.querySelector('#topbar-date-range .badge-text');
+      const rowsEl = document.querySelector('#topbar-rows-count .badge-text');
+      const synthBadge = document.getElementById('topbar-synthetic-badge');
+
+      if (nameEl && data.dataset_name) {
+        nameEl.textContent = data.dataset_name;
+        document.getElementById('topbar-dataset-name').classList.add('badge-real');
+      }
+      if (dateEl && data.date_range) {
+        dateEl.textContent = `${data.date_range.start || data.date_range[0]} to ${data.date_range.end || data.date_range[1]}`;
+      }
+      if (rowsEl && data.rows !== undefined) {
+        rowsEl.textContent = `${Number(data.rows).toLocaleString()} rows`;
+      }
+      if (synthBadge) {
+        if (data.is_synthetic) {
+          synthBadge.classList.remove('d-none');
+        } else {
+          synthBadge.classList.add('d-none');
+        }
+      }
+    };
+
+    // Sample data loader
+    WeatherWise.loadSampleData = WeatherWise.loadSampleData || async function(e) {
+      if (e) e.preventDefault();
+      try {
+        WeatherWise.showLoading('Loading curated benchmark weather dataset...');
+        const res = await fetch('/api/sample');
+        if (!res.ok) throw new Error('Failed to load sample dataset');
+        const data = await res.json();
+        WeatherWise.toast('Benchmark sample dataset loaded successfully!', 'success');
+        WeatherWise.updateTopbar(data);
+        if (window.location.pathname !== '/workspace') {
+          window.location.href = '/workspace';
+        } else if (typeof window.initWorkspace === 'function') {
+          window.initWorkspace();
+        }
+      } catch (err) {
+        console.error(err);
+        WeatherWise.toast(err.message || 'Error loading sample dataset', 'error');
+      } finally {
+        WeatherWise.hideLoading();
+      }
+    };
+
+    // Check dataset info on load
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Mobile sidebar toggle handler
+      const toggleBtn = document.getElementById('ww-sidebar-toggle');
+      const sidebar = document.getElementById('ww-sidebar');
+      if (toggleBtn && sidebar) {
+        toggleBtn.addEventListener('click', () => {
+          sidebar.classList.toggle('show');
+        });
+        document.addEventListener('click', (e) => {
+          if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target) && sidebar.classList.contains('show')) {
+            sidebar.classList.remove('show');
+          }
+        });
+      }
+
+      // Mark current navigation item active based on path
+      const currentPath = window.location.pathname;
+      document.querySelectorAll('.ww-sidebar-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentPath || (href !== '/' && currentPath.startsWith(href))) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
+      });
+
+      // Try fetching existing dataset info
+      try {
+        const res = await fetch('/api/dataset-info');
+        if (res.ok) {
+          const info = await res.json();
+          if (info && (info.dataset_name || info.rows > 0)) {
+            WeatherWise.updateTopbar(info);
+          }
+        }
+      } catch (e) {
+        // Silent dataset check fail on cold start
+      }
+    });
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

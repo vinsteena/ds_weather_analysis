@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}What-If Lab | Scenario Stress-Testing | WeatherWise{% endblock %}
+{% block page_title %}What-If Scenario Lab{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Disclaimer Banner -->
+  <div class="ww-card-glass border-warning border-opacity-30 mb-4 p-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="p-2 rounded bg-warning bg-opacity-10 text-warning fs-4">
+        <i class="bi bi-shield-exclamation"></i>
+      </div>
+      <div>
+        <span class="badge bg-warning-subtle text-warning small text-uppercase fw-bold">Scientific Boundary Disclaimer</span>
+        <h3 class="h6 fw-bold text-white mb-0">Hypothetical Statistical Scenario &mdash; Not a Meteorological Forecast</h3>
+        <p class="small text-secondary mb-0">
+          Simulations apply mathematical offsets to historical observational baselines to stress-test tolerance thresholds. They do not simulate full atmospheric Navier-Stokes thermodynamics.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Section -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="ww-section-title mb-1">What-If Climate & Variable Perturbation Lab</h2>
+      <p class="ww-section-subtitle mb-0">Model micro-climatic shifts, synthetic heatwaves, and precipitation shocks across targeted historical periods.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/api/scenario/export" class="ww-btn-secondary btn-sm" id="btn-export-scenario">
+        <i class="bi bi-download"></i>
+        <span>Export Scenario CSV</span>
+      </a>
+      <a href="/forecast" class="ww-btn-primary btn-sm">
+        <i class="bi bi-graph-up-arrow"></i>
+        <span>Forecast Face-Off</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Controls Card -->
+  <div class="ww-card mb-4">
+    <h3 class="h6 fw-bold text-white mb-3"><i class="bi bi-sliders me-2 text-info"></i>Scenario Perturbation Controls</h3>
+
+    <div class="row g-3">
+      <!-- Target Variable -->
+      <div class="col-12 col-md-3">
+        <label for="scenario-variable" class="small text-secondary fw-semibold mb-1">Target Variable</label>
+        <select id="scenario-variable" class="form-select bg-dark text-white border-secondary" onchange="handleVariableChange()">
+          <option value="temperature" selected>Temperature (°C)</option>
+          <option value="humidity">Relative Humidity (%)</option>
+          <option value="rainfall">Rainfall Volume (mm)</option>
+          <option value="wind_speed">Wind Speed (km/h)</option>
+          <option value="pressure">Atmospheric Pressure (hPa)</option>
+        </select>
+      </div>
+
+      <!-- Adjustment Type -->
+      <div class="col-12 col-md-3">
+        <label for="scenario-adj-type" class="small text-secondary fw-semibold mb-1">Adjustment Logic</label>
+        <select id="scenario-adj-type" class="form-select bg-dark text-white border-secondary" onchange="handleTypeChange()">
+          <option value="add" selected>Additive Offset (+ / - absolute units)</option>
+          <option value="multiply">Multiplier Scaling (&times; factor %)</option>
+        </select>
+      </div>
+
+      <!-- Date Range (Start & End) -->
+      <div class="col-6 col-md-3">
+        <label for="scenario-start-date" class="small text-secondary fw-semibold mb-1">Scenario Start</label>
+        <input type="date" id="scenario-start-date" class="form-control bg-dark text-white border-secondary">
+      </div>
+      <div class="col-6 col-md-3">
+        <label for="scenario-end-date" class="small text-secondary fw-semibold mb-1">Scenario End</label>
+        <input type="date" id="scenario-end-date" class="form-control bg-dark text-white border-secondary">
+      </div>
+    </div>
+
+    <!-- Slider & Numeric Input -->
+    <div class="mt-3 p-3 rounded bg-dark border border-secondary border-opacity-15">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small text-secondary fw-semibold" id="slider-label-text">Additive Shift Magnitude (e.g. &plusmn;°C):</span>
+        <div class="d-flex align-items-center gap-2">
+          <input type="number" id="scenario-val-input" class="form-control form-control-sm bg-dark text-white text-end border-info font-monospace" style="width: 100px;" value="2.5" step="0.1" onchange="syncFromInput(this.value)">
+          <span class="small text-info fw-bold" id="val-unit-label">°C</span>
+        </div>
+      </div>
+      <input type="range" class="form-range" id="scenario-slider" min="-10" max="10" step="0.1" value="2.5" oninput="syncFromSlider(this.value)">
+      <div class="d-flex justify-content-between small text-secondary" style="font-size: 0.75rem;">
+        <span id="slider-min-bound">-10.0</span>
+        <span class="text-info font-monospace">Baseline Center (0.0)</span>
+        <span id="slider-max-bound">+10.0</span>
+      </div>
+    </div>
+
+    <!-- Quick Stress Presets -->
+    <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top border-secondary border-opacity-10">
+      <span class="small text-secondary fw-semibold me-2">Quick Stress Scenarios:</span>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="applyPreset('heatwave')">
+        <i class="bi bi-fire me-1"></i>Heatwave (+3.5°C)
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-warning" onclick="applyPreset('drought')">
+        <i class="bi bi-sun me-1"></i>Severe Drought (-40% rain)
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-primary" onclick="applyPreset('monsoon')">
+        <i class="bi bi-cloud-rain-heavy me-1"></i>Monsoon Deluge (+50% rain)
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-teal" style="color: var(--color-accent-teal); border-color: var(--color-accent-teal);" onclick="applyPreset('windstorm')">
+        <i class="bi bi-wind me-1"></i>Windstorm Surge (+25 km/h)
+      </button>
+
+      <div class="ms-auto d-flex gap-2">
+        <button type="button" class="ww-btn-secondary btn-sm" id="btn-reset-scenario" onclick="resetScenario()">
+          <i class="bi bi-arrow-counterclockwise"></i>
+          <span>Reset Baseline</span>
+        </button>
+        <button type="button" class="ww-btn-primary btn-sm" id="btn-apply-scenario" onclick="applyScenario()">
+          <i class="bi bi-play-fill"></i>
+          <span>Apply Scenario</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side-by-Side Comparison Cards -->
+  <div class="row g-4 mb-4">
+    <!-- Original Baseline Card -->
+    <div class="col-12 col-md-6">
+      <div class="ww-card h-100 border-info border-opacity-30">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="badge bg-info-subtle text-info border border-info-subtle">Baseline (Historical)</span>
+          <span class="small text-secondary">Original Instrument Records</span>
+        </div>
+        <div class="row g-3 text-center">
+          <div class="col-3">
+            <span class="small text-secondary d-block" style="font-size: 0.72rem;">Mean Average</span>
+            <div class="h4 fw-bold text-info font-monospace mb-0" id="stat-orig-mean">--</div>
+          </div>
+          <div class="col-3">
+            <span class="small text-secondary d-block" style="font-size: 0.72rem;">Maximum Peak</span>
+            <div class="h4 fw-bold text-danger font-monospace mb-0" id="stat-orig-max">--</div>
+          </div>
+          <div class="col-3">
+            <span class="small text-secondary d-block" style="font-size: 0.72rem;">Minimum Trough</span>
+            <div class="h4 fw-bold text-teal font-monospace mb-0" id="stat-orig-min">--</div>
+          </div>
+          <div class="col-3">
+            <span class="small text-secondary d-block" style="font-size: 0.72rem;">Std Dev (σ)</span>
+            <div class="h4 fw-bold text-secondary font-monospace mb-0" id="stat-orig-std">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modified Scenario Card -->
+    <div class="col-12 col-md-6">
+      <div class="ww-card h-100 border-warning border-opacity-40" style="background: rgba(245, 158, 11, 0.03);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Modified Scenario (Perturbed)</span>
+          <span class="small text-warning" id="scenario-delta-label">Δ Applied</span>
+        </div>
+        <div class="row g-3 text-center">
+          <div class="col-3">
+            <span class="small text-secondary d-block" style="font-size: 0.72rem;">Scenario Mean</span>
+            <div class="h4 fw-bold text-warning font-monospace mb-0" id="stat-mod-mean">--</div>
+          </div>
+          <div class="col-3">
+            <span class="small text-secondary d-block" style="font-size: 0.72rem;">Scenario Max</span>
+            <div class="h4 fw-bold text-danger font-monospace mb-0" id="stat-mod-max">--</div>
+          </div>
+          <div class="col-3">
+            <span class="small text-secondary d-block" style="font-size: 0.72rem;">Scenario Min</span>
+            <div class="h4 fw-bold text-teal font-monospace mb-0" id="stat-mod-min">--</div>
+          </div>
+          <div class="col-3">
+            <span class="small text-secondary d-block" style="font-size: 0.72rem;">Scenario Std Dev</span>
+            <div class="h4 fw-bold text-secondary font-monospace mb-0" id="stat-mod-std">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Before / After Overlay Chart -->
+  <div class="ww-card p-3 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+      <div>
+        <h3 class="h5 fw-bold text-white mb-0">Before vs After Scenario Overlay Trajectory</h3>
+        <p class="small text-secondary mb-0">Cyan dashed line represents original historical baseline; amber solid line portrays scenario perturbation.</p>
+      </div>
+      <div class="d-flex gap-3 small text-secondary">
+        <span class="d-flex align-items-center gap-1">
+          <span style="display:inline-block;width:14px;height:2px;background:#00d4e8;border-style:dashed;"></span> Original Baseline
+        </span>
+        <span class="d-flex align-items-center gap-1">
+          <span style="display:inline-block;width:14px;height:3px;background:#f59e0b;"></span> Perturbed Scenario
+        </span>
+      </div>
+    </div>
+
+    <div id="chart-scenario-overlay" class="ww-chart-container" style="min-height: 460px;">
+      <div class="d-flex align-items-center justify-content-center h-100 text-secondary">
+        Executing scenario simulation...
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function handleTypeChange() {
+    const type = document.getElementById('scenario-adj-type').value;
+    const slider = document.getElementById('scenario-slider');
+    const input = document.getElementById('scenario-val-input');
+    const label = document.getElementById('slider-label-text');
+    const unitLabel = document.getElementById('val-unit-label');
+    const minBound = document.getElementById('slider-min-bound');
+    const maxBound = document.getElementById('slider-max-bound');
+
+    if (type === 'multiply') {
+      label.textContent = 'Multiplier Factor (1.0 = baseline 100%):';
+      unitLabel.textContent = 'x';
+      slider.min = '0.1';
+      slider.max = '3.0';
+      slider.step = '0.05';
+      slider.value = '1.25';
+      input.value = '1.25';
+      minBound.textContent = '0.1x';
+      maxBound.textContent = '3.0x';
+    } else {
+      label.textContent = 'Additive Shift Magnitude (e.g. ± units):';
+      const variable = document.getElementById('scenario-variable').value;
+      const units = { temperature: '°C', humidity: '%', rainfall: 'mm', wind_speed: 'km/h', pressure: 'hPa' };
+      unitLabel.textContent = units[variable] || '';
+      slider.min = '-15';
+      slider.max = '15';
+      slider.step = '0.5';
+      slider.value = '2.5';
+      input.value = '2.5';
+      minBound.textContent = '-15.0';
+      maxBound.textContent = '+15.0';
+    }
+  }
+
+  function handleVariableChange() {
+    handleTypeChange();
+    applyScenario();
+  }
+
+  function syncFromSlider(val) {
+    document.getElementById('scenario-val-input').value = val;
+  }
+
+  function syncFromInput(val) {
+    document.getElementById('scenario-slider').value = val;
+  }
+
+  function applyPreset(name) {
+    const varSelect = document.getElementById('scenario-variable');
+    const typeSelect = document.getElementById('scenario-adj-type');
+
+    if (name === 'heatwave') {
+      varSelect.value = 'temperature';
+      typeSelect.value = 'add';
+      handleTypeChange();
+      document.getElementById('scenario-slider').value = '3.5';
+      document.getElementById('scenario-val-input').value = '3.5';
+    } else if (name === 'drought') {
+      varSelect.value = 'rainfall';
+      typeSelect.value = 'multiply';
+      handleTypeChange();
+      document.getElementById('scenario-slider').value = '0.6';
+      document.getElementById('scenario-val-input').value = '0.6';
+    } else if (name === 'monsoon') {
+      varSelect.value = 'rainfall';
+      typeSelect.value = 'multiply';
+      handleTypeChange();
+      document.getElementById('scenario-slider').value = '1.5';
+      document.getElementById('scenario-val-input').value = '1.5';
+    } else if (name === 'windstorm') {
+      varSelect.value = 'wind_speed';
+      typeSelect.value = 'add';
+      handleTypeChange();
+      document.getElementById('scenario-slider').value = '25.0';
+      document.getElementById('scenario-val-input').value = '25.0';
+    }
+    applyScenario();
+  }
+
+  function resetScenario() {
+    const type = document.getElementById('scenario-adj-type').value;
+    if (type === 'multiply') {
+      document.getElementById('scenario-slider').value = '1.0';
+      document.getElementById('scenario-val-input').value = '1.0';
+    } else {
+      document.getElementById('scenario-slider').value = '0.0';
+      document.getElementById('scenario-val-input').value = '0.0';
+    }
+    applyScenario();
+  }
+
+  async function applyScenario() {
+    const variable = document.getElementById('scenario-variable').value;
+    const adjustment_type = document.getElementById('scenario-adj-type').value;
+    const adjustment = parseFloat(document.getElementById('scenario-val-input').value);
+    const date_start = document.getElementById('scenario-start-date').value || null;
+    const date_end = document.getElementById('scenario-end-date').value || null;
+
+    try {
+      WeatherWise.showLoading('Computing scenario stress simulation...');
+      const res = await fetch('/api/scenario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variable, adjustment, adjustment_type, date_start, date_end })
+      });
+      if (!res.ok) throw new Error('Scenario calculation failed');
+      const data = await res.json();
+
+      updateComparisonCards(data, variable, adjustment_type, adjustment);
+      renderScenarioChart(data, variable);
+      WeatherWise.toast('Scenario stress model applied successfully!', 'success');
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'Scenario computation error', 'error');
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  }
+
+  function updateComparisonCards(data, variable, type, adj) {
+    const orig = data.original_stats || {};
+    const mod = data.modified_stats || {};
+
+    document.getElementById('stat-orig-mean').textContent = orig.mean !== undefined ? Number(orig.mean).toFixed(1) : '--';
+    document.getElementById('stat-orig-max').textContent = orig.max !== undefined ? Number(orig.max).toFixed(1) : '--';
+    document.getElementById('stat-orig-min').textContent = orig.min !== undefined ? Number(orig.min).toFixed(1) : '--';
+    document.getElementById('stat-orig-std').textContent = orig.std !== undefined ? Number(orig.std).toFixed(1) : '--';
+
+    document.getElementById('stat-mod-mean').textContent = mod.mean !== undefined ? Number(mod.mean).toFixed(1) : '--';
+    document.getElementById('stat-mod-max').textContent = mod.max !== undefined ? Number(mod.max).toFixed(1) : '--';
+    document.getElementById('stat-mod-min').textContent = mod.min !== undefined ? Number(mod.min).toFixed(1) : '--';
+    document.getElementById('stat-mod-std').textContent = mod.std !== undefined ? Number(mod.std).toFixed(1) : '--';
+
+    const deltaSign = type === 'multiply' ? `${adj}x factor` : (adj >= 0 ? `+${adj}` : `${adj}`);
+    document.getElementById('scenario-delta-label').textContent = `Shift: ${deltaSign}`;
+  }
+
+  function renderScenarioChart(data, variable) {
+    const chartDiv = 'chart-scenario-overlay';
+    const dates = data.dates || [];
+    const origVals = data.original_values || data.observed || [];
+    const modVals = data.modified_values || data.modified || [];
+
+    const traceOrig = {
+      x: dates,
+      y: origVals,
+      mode: 'lines',
+      name: 'Baseline Historical',
+      line: { color: '#00d4e8', width: 1.5, dash: 'dot' }
+    };
+
+    const traceMod = {
+      x: dates,
+      y: modVals,
+      mode: 'lines',
+      name: 'Scenario Perturbation',
+      line: { color: '#f59e0b', width: 2.2 }
+    };
+
+    const layout = {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'rgba(8, 13, 26, 0.4)',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 20, r: 20, l: 50, b: 40 },
+      xaxis: { gridcolor: 'rgba(255, 255, 255, 0.05)' },
+      yaxis: { gridcolor: 'rgba(255, 255, 255, 0.05)', title: variable },
+      legend: { orientation: 'h', y: 1.1, x: 0 },
+      hovermode: 'x unified'
+    };
+
+    Plotly.newPlot(chartDiv, [traceOrig, traceMod], layout, { responsive: true, displayModeBar: true, displaylogo: false });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    applyScenario();
+  });
+</script>
+{% endblock %}

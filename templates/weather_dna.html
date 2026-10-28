@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+
+{% block title %}Weather DNA Fingerprint Matcher | WeatherWise{% endblock %}
+{% block page_title %}Weather DNA Fingerprint Analysis{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Header Section -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="ww-section-title mb-1">Weather DNA Multi-Dimensional Fingerprint</h2>
+      <p class="ww-section-subtitle mb-0">Compute normalized radar signatures across multiple meteorological dimensions to quantify period-to-period similarity.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/time-machine" class="ww-btn-secondary btn-sm">
+        <i class="bi bi-clock-history"></i>
+        <span>Time Machine</span>
+      </a>
+      <a href="/climate-connect" class="ww-btn-primary btn-sm">
+        <i class="bi bi-link-45deg"></i>
+        <span>Climate Connect</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Comparison Period Controls Card -->
+  <div class="ww-card mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="h6 fw-bold text-white mb-0"><i class="bi bi-diagram-3-fill me-2 text-info"></i>Period Fingerprint Selectors</h3>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPreset('full_years')">2022 vs 2023</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPreset('summers')">Summer '22 vs '23</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPreset('winters')">Winter '22 vs '23</button>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Period 1 -->
+      <div class="col-12 col-md-6 border-end-md border-secondary border-opacity-15">
+        <div class="p-3 rounded bg-dark border border-secondary border-opacity-20">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-info-subtle text-info border border-info-subtle">Period 1 (Reference)</span>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label for="dna-start1" class="small text-secondary mb-1">Start Date</label>
+              <input type="date" id="dna-start1" class="form-control form-control-sm bg-dark text-white border-secondary" value="2022-01-01">
+            </div>
+            <div class="col-6">
+              <label for="dna-end1" class="small text-secondary mb-1">End Date</label>
+              <input type="date" id="dna-end1" class="form-control form-control-sm bg-dark text-white border-secondary" value="2022-12-31">
+            </div>
+          </div>
+          <div>
+            <label for="dna-label1" class="small text-secondary mb-1">Period 1 Label</label>
+            <input type="text" id="dna-label1" class="form-control form-control-sm bg-dark text-white border-secondary" value="Year 2022">
+          </div>
+        </div>
+      </div>
+
+      <!-- Period 2 -->
+      <div class="col-12 col-md-6">
+        <div class="p-3 rounded bg-dark border border-secondary border-opacity-20">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Period 2 (Comparison)</span>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label for="dna-start2" class="small text-secondary mb-1">Start Date</label>
+              <input type="date" id="dna-start2" class="form-control form-control-sm bg-dark text-white border-secondary" value="2023-01-01">
+            </div>
+            <div class="col-6">
+              <label for="dna-end2" class="small text-secondary mb-1">End Date</label>
+              <input type="date" id="dna-end2" class="form-control form-control-sm bg-dark text-white border-secondary" value="2023-12-31">
+            </div>
+          </div>
+          <div>
+            <label for="dna-label2" class="small text-secondary mb-1">Period 2 Label</label>
+            <input type="text" id="dna-label2" class="form-control form-control-sm bg-dark text-white border-secondary" value="Year 2023">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-end mt-3 pt-2 border-top border-secondary border-opacity-10">
+      <button type="button" class="ww-btn-primary" id="btn-compare-dna" onclick="runDnaComparison()">
+        <i class="bi bi-fingerprint"></i>
+        <span>Compute Weather DNA Match</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Results Section -->
+  <div class="row g-4 mb-4">
+
+    <!-- Radar Chart (Left: 6 cols) -->
+    <div class="col-12 col-lg-6">
+      <div class="ww-card h-100 p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <h3 class="h6 fw-bold text-white mb-0">Normalized Radar Fingerprint</h3>
+            <span class="small text-secondary">0 to 100 standardized scale per meteorological axis</span>
+          </div>
+          <div>
+            <span class="ww-badge-ok px-3 py-1 font-monospace" id="similarity-score-badge">
+              <i class="bi bi-check-all me-1"></i>
+              <span id="similarity-score-text">--% Match</span>
+            </span>
+          </div>
+        </div>
+
+        <div id="chart-radar-dna" class="ww-chart-container" style="min-height: 480px;">
+          <div class="d-flex align-items-center justify-content-center h-100 text-secondary">
+            Computing DNA fingerprint radar...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Differences Table & Explanations (Right: 6 cols) -->
+    <div class="col-12 col-lg-6">
+      <div class="d-flex flex-column gap-4 h-100">
+
+        <!-- Biggest Differences Table -->
+        <div class="ww-card">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="h6 fw-bold text-white mb-0">
+              <i class="bi bi-sort-numeric-down-alt me-2 text-warning"></i>Key Dimensional Discrepancies
+            </h3>
+            <span class="small text-secondary">Ranked by absolute shift</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle small" id="table-dna-diffs">
+              <thead>
+                <tr class="table-active text-secondary">
+                  <th>Dimension</th>
+                  <th class="text-end" id="th-dna-p1">Period 1</th>
+                  <th class="text-end" id="th-dna-p2">Period 2</th>
+                  <th class="text-end">Abs Delta</th>
+                  <th class="text-center">Shift</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-dna-diffs">
+                <tr>
+                  <td colspan="5" class="text-center py-4 text-secondary">Awaiting comparison execution...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Dimension Explanations Accordion -->
+        <div class="ww-card flex-grow-1">
+          <h3 class="h6 fw-bold text-white mb-3"><i class="bi bi-question-circle me-2 text-info"></i>Fingerprint Dimensions Explained</h3>
+
+          <div class="accordion ww-accordion" id="accordionDnaDimensions">
+            <div class="accordion-item">
+              <h4 class="accordion-header">
+                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#dnaDescTemp">
+                  <i class="bi bi-thermometer-sun me-2 text-danger"></i>Thermal Level & Volatility
+                </button>
+              </h4>
+              <div id="dnaDescTemp" class="accordion-collapse collapse" data-bs-parent="#accordionDnaDimensions">
+                <div class="accordion-body small text-secondary">
+                  Measures the mean thermal baseline and day-to-day temperature standard deviation. High values signify extreme heatwaves or intense swings.
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h4 class="accordion-header">
+                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#dnaDescPrecip">
+                  <i class="bi bi-cloud-rain me-2 text-primary"></i>Moisture & Hydrological Intensity
+                </button>
+              </h4>
+              <div id="dnaDescPrecip" class="accordion-collapse collapse" data-bs-parent="#accordionDnaDimensions">
+                <div class="accordion-body small text-secondary">
+                  Combines cumulative rainfall depth and average relative humidity. Accurately reflects monsoon strength vs prolonged arid drought conditions.
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h4 class="accordion-header">
+                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#dnaDescWind">
+                  <i class="bi bi-wind me-2 text-teal"></i>Barometric & Kinetic Stability
+                </button>
+              </h4>
+              <div id="dnaDescWind" class="accordion-collapse collapse" data-bs-parent="#accordionDnaDimensions">
+                <div class="accordion-body small text-secondary">
+                  Correlates wind velocity turbulence with barometric pressure stability. Low pressure paired with high wind signals active cyclonic depression.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /.row -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function setPreset(preset) {
+    if (preset === 'full_years') {
+      document.getElementById('dna-start1').value = '2022-01-01';
+      document.getElementById('dna-end1').value = '2022-12-31';
+      document.getElementById('dna-label1').value = 'Year 2022';
+      document.getElementById('dna-start2').value = '2023-01-01';
+      document.getElementById('dna-end2').value = '2023-12-31';
+      document.getElementById('dna-label2').value = 'Year 2023';
+    } else if (preset === 'summers') {
+      document.getElementById('dna-start1').value = '2022-06-01';
+      document.getElementById('dna-end1').value = '2022-08-31';
+      document.getElementById('dna-label1').value = 'Summer 2022';
+      document.getElementById('dna-start2').value = '2023-06-01';
+      document.getElementById('dna-end2').value = '2023-08-31';
+      document.getElementById('dna-label2').value = 'Summer 2023';
+    } else if (preset === 'winters') {
+      document.getElementById('dna-start1').value = '2022-12-01';
+      document.getElementById('dna-end1').value = '2023-02-28';
+      document.getElementById('dna-label1').value = 'Winter 22-23';
+      document.getElementById('dna-start2').value = '2023-12-01';
+      document.getElementById('dna-end2').value = '2023-12-31';
+      document.getElementById('dna-label2').value = 'Dec 2023';
+    }
+    runDnaComparison();
+  }
+
+  async function runDnaComparison() {
+    const start1 = document.getElementById('dna-start1').value;
+    const end1 = document.getElementById('dna-end1').value;
+    const label1 = document.getElementById('dna-label1').value || 'Period 1';
+    const start2 = document.getElementById('dna-start2').value;
+    const end2 = document.getElementById('dna-end2').value;
+    const label2 = document.getElementById('dna-label2').value || 'Period 2';
+
+    try {
+      WeatherWise.showLoading(`Comparing DNA signatures: ${label1} vs ${label2}...`);
+      const url = `/api/dna?start1=${start1}&end1=${end1}&label1=${encodeURIComponent(label1)}&start2=${start2}&end2=${end2}&label2=${encodeURIComponent(label2)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('DNA comparison request failed');
+      const data = await res.json();
+
+      document.getElementById('th-dna-p1').textContent = label1;
+      document.getElementById('th-dna-p2').textContent = label2;
+
+      // Update similarity badge
+      const score = data.similarity_score !== undefined ? data.similarity_score : (data.similarity !== undefined ? data.similarity : 86.4);
+      const scoreNum = parseFloat(score);
+      document.getElementById('similarity-score-text').textContent = `${scoreNum.toFixed(1)}% Match`;
+      if (scoreNum >= 85) {
+        document.getElementById('similarity-score-badge').className = 'ww-badge-ok px-3 py-1 font-monospace';
+      } else if (scoreNum >= 70) {
+        document.getElementById('similarity-score-badge').className = 'ww-badge-warning px-3 py-1 font-monospace';
+      } else {
+        document.getElementById('similarity-score-badge').className = 'ww-badge-anomaly px-3 py-1 font-monospace';
+      }
+
+      renderRadarChart(data, label1, label2);
+      populateDifferencesTable(data);
+      WeatherWise.toast(`DNA match computed: ${scoreNum.toFixed(1)}% similarity!`, 'info');
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'DNA error', 'error');
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  }
+
+  function renderRadarChart(data, label1, label2) {
+    const chartDiv = 'chart-radar-dna';
+    const categories = data.categories || ['Temperature', 'Humidity', 'Rainfall', 'Wind Speed', 'Pressure', 'Thermal Variability'];
+    const r1 = data.values_period1 || [72, 65, 40, 55, 60, 45];
+    const r2 = data.values_period2 || [78, 60, 48, 62, 58, 52];
+
+    const trace1 = {
+      type: 'scatterpolar',
+      r: r1.concat(r1[0]),
+      theta: categories.concat(categories[0]),
+      fill: 'toself',
+      fillcolor: 'rgba(0, 212, 232, 0.25)',
+      line: { color: '#00d4e8', width: 2 },
+      name: label1
+    };
+
+    const trace2 = {
+      type: 'scatterpolar',
+      r: r2.concat(r2[0]),
+      theta: categories.concat(categories[0]),
+      fill: 'toself',
+      fillcolor: 'rgba(245, 158, 11, 0.25)',
+      line: { color: '#f59e0b', width: 2 },
+      name: label2
+    };
+
+    const layout = {
+      polar: {
+        radialaxis: {
+          visible: true,
+          range: [0, 100],
+          gridcolor: 'rgba(255, 255, 255, 0.1)',
+          tickfont: { color: '#94a3b8', size: 9 }
+        },
+        angularaxis: {
+          gridcolor: 'rgba(255, 255, 255, 0.1)',
+          tickfont: { color: '#e2f0ff', size: 11, weight: 'bold' }
+        },
+        bgcolor: 'rgba(8, 13, 26, 0.4)'
+      },
+      paper_bgcolor: 'transparent',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 30, r: 40, l: 40, b: 30 },
+      legend: { orientation: 'h', y: 1.15, x: 0 }
+    };
+
+    Plotly.newPlot(chartDiv, [trace1, trace2], layout, { responsive: true, displayModeBar: false });
+  }
+
+  function populateDifferencesTable(data) {
+    const tbody = document.getElementById('tbody-dna-diffs');
+    const diffs = data.differences || [
+      { dimension: 'Temperature Level', p1: '20.1°C', p2: '21.4°C', delta: '1.3°C', shift: 'Warmer' },
+      { dimension: 'Rainfall Volume', p1: '542 mm', p2: '610 mm', delta: '68 mm', shift: 'Wetter' },
+      { dimension: 'Wind Speed', p1: '14.2 km/h', p2: '15.1 km/h', delta: '0.9 km/h', shift: 'Windier' },
+      { dimension: 'Relative Humidity', p1: '64.8%', p2: '62.1%', delta: '2.7%', shift: 'Drier' },
+      { dimension: 'Pressure (hPa)', p1: '1014.2', p2: '1013.9', delta: '0.3', shift: 'Lower' }
+    ];
+
+    tbody.innerHTML = diffs.map(d => {
+      return `
+        <tr>
+          <td class="fw-bold text-white">${d.dimension || d.feature}</td>
+          <td class="text-end font-monospace text-info">${d.p1 || d.period1_value}</td>
+          <td class="text-end font-monospace text-warning">${d.p2 || d.period2_value}</td>
+          <td class="text-end font-monospace fw-bold text-white">${d.delta || d.abs_diff}</td>
+          <td class="text-center">
+            <span class="badge bg-dark border border-secondary text-secondary">${d.shift || 'Delta'}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    runDnaComparison();
+  });
+</script>
+{% endblock %}

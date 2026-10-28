@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeatherWise — Weather Intelligence & Trend Analysis</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <!-- Custom Dynamic Atmospheric Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+  <!-- Plotly.js -->
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+</head>
+<body data-vibe="rainy">
+
+  <!-- ====================================================================
+       DYNAMIC ATMOSPHERIC BACKGROUND EFFECTS (Sun Rays, Clouds, Rain, Thunder/Lightning, Snow)
+       ==================================================================== -->
+  <div id="ww-weather-backdrop" class="ww-weather-backdrop" aria-hidden="true">
+    <!-- 1. Sun Rays & Radiant Solar Orb (Active on sunny vibe) -->
+    <div class="ww-fx-sun">
+      <div class="ww-sun-orb"></div>
+      <div class="ww-sun-beam-container">
+        <div class="ww-sun-beam beam-1"></div>
+        <div class="ww-sun-beam beam-2"></div>
+        <div class="ww-sun-beam beam-3"></div>
+        <div class="ww-sun-beam beam-4"></div>
+        <div class="ww-sun-beam beam-5"></div>
+        <div class="ww-sun-beam beam-6"></div>
+        <div class="ww-sun-beam beam-7"></div>
+        <div class="ww-sun-beam beam-8"></div>
+      </div>
+      <div class="ww-sun-flare"></div>
+    </div>
+
+    <!-- 2. Moving Parallax Clouds (Active on cloudy, rainy, stormy vibes) -->
+    <div class="ww-fx-clouds">
+      <div class="ww-cloud-layer layer-1"></div>
+      <div class="ww-cloud-layer layer-2"></div>
+      <div class="ww-cloud-layer layer-3"></div>
+    </div>
+
+    <!-- 3. Dynamic Rain Streaks (Active on rainy & stormy vibes) -->
+    <div class="ww-fx-rain" id="ww-fx-rain"></div>
+
+    <!-- 4. Thunder & Lightning Strikes (Active on stormy vibe) -->
+    <div class="ww-fx-thunder" id="ww-fx-thunder">
+      <div class="ww-lightning-flash"></div>
+      <svg class="ww-lightning-bolt" id="ww-lightning-bolt" viewBox="0 0 160 420" preserveAspectRatio="none">
+        <path d="M95 0 L40 160 L85 160 L20 420 L140 190 L95 190 Z" fill="url(#lightningGrad)" />
+        <defs>
+          <linearGradient id="lightningGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98"/>
+            <stop offset="45%" stop-color="#e0e7ff" stop-opacity="0.9"/>
+            <stop offset="80%" stop-color="#a5b4fc" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#818cf8" stop-opacity="0.1"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+
+    <!-- 5. Snow Crystal Flakes (Active on snowy vibe) -->
+    <div class="ww-fx-snow" id="ww-fx-snow"></div>
+  </div>
+
+  <div class="ww-app-container">
+
+    <!-- ====================================================================
+         TOPBAR / NAVBAR
+         ==================================================================== -->
+    <header class="ww-navbar">
+      <a href="/" class="ww-brand">
+        <div class="ww-brand-icon">
+          <i class="bi bi-cloud-sun-fill"></i>
+        </div>
+        <div>
+          <div class="ww-brand-name">WeatherWise</div>
+          <div class="ww-brand-tagline">Every Weather Pattern Has a Story</div>
+        </div>
+      </a>
+
+      <div class="ww-header-controls">
+        <!-- Live Real-Time Station Status Badge -->
+        <div class="ww-live-indicator" id="ww-live-indicator" title="Connected directly to Open-Meteo real-time meteorological station">
+          <span class="ww-live-pulse-dot"></span>
+          <span class="ww-live-text" id="ww-live-status">LIVE SENSOR ACTIVE</span>
+        </div>
+
+        <!-- Real-Time Force Sync Button -->
+        <button id="btn-sync-now" class="ww-icon-btn" title="Force sync latest station readings now" aria-label="Sync Real-Time Data">
+          <i class="bi bi-arrow-repeat" id="icon-sync-spin"></i>
+        </button>
+
+        <!-- Detect My Current Location (GPS) Button -->
+        <button id="btn-detect-location" class="ww-location-btn" title="Detect your exact current location in real time via GPS">
+          <i class="bi bi-crosshair2 text-primary"></i>
+          <span>My Location</span>
+        </button>
+
+        <!-- City Selector -->
+        <select id="city-select" class="ww-city-select" aria-label="Select City">
+          <option value="London">London, United Kingdom</option>
+          <option value="New York">New York, United States</option>
+          <option value="Tokyo">Tokyo, Japan</option>
+          <option value="Paris">Paris, France</option>
+          <option value="San Francisco">San Francisco, United States</option>
+          <option value="Sydney">Sydney, Australia</option>
+          <option value="Mumbai">Mumbai, India</option>
+          <option value="Dubai">Dubai, UAE</option>
+          <option value="Berlin">Berlin, Germany</option>
+          <option value="Singapore">Singapore</option>
+          <option value="Toronto">Toronto, Canada</option>
+          <option value="São Paulo">São Paulo, Brazil</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         EXECUTIVE NAVIGATION TABS
+         ==================================================================== -->
+    <nav class="ww-nav-tabs" aria-label="Main Navigation">
+      <button class="ww-tab-btn active" data-tab="tab-today">
+        <i class="bi bi-clock-history"></i> Today's Outlook & Hourly
+      </button>
+      <button class="ww-tab-btn" data-tab="tab-weekly">
+        <i class="bi bi-calendar-week"></i> 7-Day Weekly Forecast
+      </button>
+      <button class="ww-tab-btn" data-tab="tab-trends">
+        <i class="bi bi-graph-up"></i> Weather Trends & Analysis
+      </button>
+      <button class="ww-tab-btn" data-tab="tab-climate">
+        <i class="bi bi-globe-americas"></i> Future Analytics & Climate
+      </button>
+      <button class="ww-tab-btn" data-tab="tab-preparedness">
+        <i class="bi bi-shield-check"></i> Preparedness & Essentials
+      </button>
+    </nav>
+
+    <!-- ====================================================================
+         TAB 1: TODAY'S OUTLOOK & HOURLY TRAJECTORY
+         ==================================================================== -->
+    <div id="tab-today" class="ww-tab-pane">
+      <div class="ww-hero-weather">
+        <!-- Main Current Condition Card -->
+        <div class="ww-card ww-current-condition">
+          <div>
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div id="weather-location-badge" class="ww-location-badge mb-0">
+                <i class="bi bi-geo-alt-fill"></i> Loading Location...
+              </div>
+              <span id="badge-data-source" class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1" style="font-size:0.72rem;">
+                <i class="bi bi-broadcast"></i> Live API
+              </span>
+            </div>
+            
+            <div class="ww-temp-large">
+              <span id="current-temp-val">--</span>
+              <span class="ww-temp-unit">°C</span>
+            </div>
+            <div id="current-condition-text" class="ww-condition-text">Loading Weather...</div>
+            <div id="current-condition-desc" class="ww-condition-desc">Synchronizing atmospheric parameters...</div>
+          </div>
+
+          <div class="d-flex align-items-center gap-3 mt-3 pt-3 border-top" style="border-color: rgba(0,0,0,0.06) !important;">
+            <div>
+              <span class="text-muted" style="font-size:0.75rem; text-transform:uppercase;">Daily High / Low</span>
+              <div id="vital-high-low" class="fw-bold" style="font-size:1.1rem;">--° / --°</div>
+            </div>
+            <div class="vr my-1"></div>
+            <div>
+              <span class="text-muted" style="font-size:0.75rem; text-transform:uppercase;">Atmospheric Pressure</span>
+              <div id="vital-pressure" class="fw-bold" style="font-size:1.1rem;">-- hPa</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Atmospheric Vitals Grid -->
+        <div class="ww-card">
+          <div class="ww-card-header mb-3">
+            <div class="ww-card-title"><i class="bi bi-speedometer2"></i> Today's Vitals</div>
+            <span id="lbl-last-sync" class="text-muted" style="font-size: 0.75rem;">Updated just now</span>
+          </div>
+          <div class="ww-vitals-grid">
+            <div class="ww-vital-box">
+              <div class="ww-vital-icon"><i class="bi bi-thermometer-half"></i></div>
+              <div>
+                <div class="ww-vital-label">Feels Like</div>
+                <div id="vital-feels-like" class="ww-vital-value">--°C</div>
+              </div>
+            </div>
+            <div class="ww-vital-box">
+              <div class="ww-vital-icon"><i class="bi bi-droplet-half"></i></div>
+              <div>
+                <div class="ww-vital-label">Humidity</div>
+                <div id="vital-humidity" class="ww-vital-value">--%</div>
+              </div>
+            </div>
+            <div class="ww-vital-box">
+              <div class="ww-vital-icon"><i class="bi bi-wind"></i></div>
+              <div>
+                <div class="ww-vital-label">Wind Speed</div>
+                <div id="vital-wind" class="ww-vital-value">-- km/h</div>
+              </div>
+            </div>
+            <div class="ww-vital-box">
+              <div class="ww-vital-icon"><i class="bi bi-brightness-high-fill"></i></div>
+              <div>
+                <div class="ww-vital-label">UV Index</div>
+                <div id="vital-uv" class="ww-vital-value">-- of 11</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 24-Hour Hourly Trajectory Card -->
+      <div class="ww-card">
+        <div class="ww-card-header">
+          <div>
+            <div class="ww-card-title"><i class="bi bi-hourglass-split"></i> 24-Hour Forecast Trajectory</div>
+            <div class="ww-card-subtitle">Predicted hourly temperature cycle, wind speed, and precipitation likelihood</div>
+          </div>
+        </div>
+        <div id="hourly-scroller" class="ww-hourly-scroller">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         TAB 2: 7-DAY WEEKLY FORECAST
+         ==================================================================== -->
+    <div id="tab-weekly" class="ww-tab-pane" style="display: none;">
+      <div class="ww-card">
+        <div class="ww-card-header">
+          <div>
+            <div class="ww-card-title"><i class="bi bi-calendar3"></i> 7-Day Atmospheric Outlook</div>
+            <div class="ww-card-subtitle">Daily weather progression, temperature variance, and precipitation likelihood</div>
+          </div>
+        </div>
+        <div id="weekly-cards-container" class="ww-weekly-grid">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         TAB 3: WEATHER TRENDS & ANALYSIS (EXPANDED SUITE)
+         ==================================================================== -->
+    <div id="tab-trends" class="ww-tab-pane" style="display: none;">
+      <div class="ww-card">
+        
+        <!-- Sub-Navigation for Trends Suite -->
+        <div class="ww-subnav-pills">
+          <button class="ww-subtab-btn active" data-subtab="subtab-trends">
+            <i class="bi bi-graph-up-arrow"></i> Historical Graphs
+          </button>
+          <button class="ww-subtab-btn" data-subtab="subtab-monthly">
+            <i class="bi bi-bar-chart-fill"></i> Monthly Comparisons
+          </button>
+          <button class="ww-subtab-btn" data-subtab="subtab-seasons">
+            <i class="bi bi-flower1"></i> Seasonal Patterns
+          </button>
+          <button class="ww-subtab-btn" data-subtab="subtab-anomalies">
+            <i class="bi bi-exclamation-triangle-fill"></i> Unusual Weather (Anomalies)
+          </button>
+          <button class="ww-subtab-btn" data-subtab="subtab-accuracy">
+            <i class="bi bi-check-circle-fill"></i> Forecast Accuracy (MAE/RMSE)
+          </button>
+        </div>
+
+        <!-- 3A. HISTORICAL GRAPHS -->
+        <div id="subtab-trends" class="ww-subtab-pane">
+          <div class="ww-filter-bar">
+            <div>
+              <div class="ww-card-title mb-1"><i class="bi bi-graph-up"></i> Multi-Year Historical Observation Engine</div>
+              <div class="ww-card-subtitle">Time-series observations with moving averages and linear regression slopes</div>
+            </div>
+
+            <!-- Time Period Selector -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="ww-period-pills">
+                <button class="ww-pill-btn ww-period-btn" data-period="7d">7 Days</button>
+                <button class="ww-pill-btn ww-period-btn active" data-period="30d">30 Days</button>
+                <button class="ww-pill-btn ww-period-btn" data-period="6m">6 Months</button>
+                <button class="ww-pill-btn ww-period-btn" data-period="1y">1 Year</button>
+                <button class="ww-pill-btn ww-period-btn" data-period="3y">3 Years</button>
+              </div>
+
+              <!-- Variable Selector -->
+              <div class="ww-var-pills">
+                <button class="ww-pill-btn ww-var-btn active" data-var="temperature">Temp</button>
+                <button class="ww-pill-btn ww-var-btn" data-var="rainfall">Rainfall</button>
+                <button class="ww-pill-btn ww-var-btn" data-var="humidity">Humidity</button>
+                <button class="ww-pill-btn ww-var-btn" data-var="wind_speed">Wind</button>
+                <button class="ww-pill-btn ww-var-btn" data-var="pressure">Pressure</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Plotly Chart Box -->
+          <div id="trend-chart-container" class="ww-chart-box"></div>
+
+          <!-- Statistical Summary Mini-Cards -->
+          <div class="ww-stats-summary-row mb-3">
+            <div class="ww-stat-mini-card">
+              <div class="ww-stat-mini-label">Period Average</div>
+              <div id="stat-trend-mean" class="ww-stat-mini-val">--</div>
+            </div>
+            <div class="ww-stat-mini-card">
+              <div class="ww-stat-mini-label">Historical Maximum</div>
+              <div id="stat-trend-max" class="ww-stat-mini-val">--</div>
+            </div>
+            <div class="ww-stat-mini-card">
+              <div class="ww-stat-mini-label">Historical Minimum</div>
+              <div id="stat-trend-min" class="ww-stat-mini-val">--</div>
+            </div>
+            <div class="ww-stat-mini-card">
+              <div class="ww-stat-mini-label">Trend Direction</div>
+              <div id="stat-trend-dir" class="ww-stat-mini-val text-primary">--</div>
+            </div>
+          </div>
+
+          <!-- Narrative Analysis Statement -->
+          <div class="p-3 bg-white bg-opacity-75 rounded-3 border" style="font-size: 0.9rem; color: var(--text-muted);">
+            <i class="bi bi-info-circle-fill text-primary me-2"></i>
+            <span id="trend-narrative">Analyzing historical weather series...</span>
+          </div>
+        </div>
+
+        <!-- 3B. MONTHLY COMPARISONS -->
+        <div id="subtab-monthly" class="ww-subtab-pane" style="display: none;">
+          <div class="ww-card-header mb-3">
+            <div>
+              <div class="ww-card-title"><i class="bi bi-calendar2-range-fill"></i> Calendar Month Climatology & YoY Comparison</div>
+              <div class="ww-card-subtitle">Monthly temperature distribution and precipitation sums across years</div>
+            </div>
+          </div>
+          <div id="monthly-chart-container" class="ww-chart-box"></div>
+
+          <div class="table-responsive bg-white bg-opacity-75 rounded-3 border p-3">
+            <h6 class="fw-bold mb-3"><i class="bi bi-table text-primary me-2"></i> 12-Month Climatological Summary Table</h6>
+            <table class="ww-table-custom">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Mean Temperature (°C)</th>
+                  <th>Avg Rainfall (mm)</th>
+                  <th>Mean Humidity (%)</th>
+                  <th>Avg Wind (km/h)</th>
+                </tr>
+              </thead>
+              <tbody id="monthly-table-body">
+                <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3C. SEASONAL PATTERNS -->
+        <div id="subtab-seasons" class="ww-subtab-pane" style="display: none;">
+          <div class="ww-card-header mb-3">
+            <div>
+              <div class="ww-card-title"><i class="bi bi-flower2"></i> Astronomical & Meteorological Seasonal Patterns</div>
+              <div class="ww-card-subtitle">Hemisphere-aware seasonal cycles (Winter, Spring, Summer, Autumn)</div>
+            </div>
+          </div>
+          
+          <div id="seasons-cards-container" class="row g-3 mb-4">
+            <!-- Populated by JavaScript -->
+          </div>
+
+          <div class="p-3 bg-white bg-opacity-75 rounded-3 border">
+            <h6 class="fw-bold mb-2"><i class="bi bi-stars text-primary me-2"></i> Seasonal Highlights</h6>
+            <div id="seasons-highlights" class="text-muted" style="font-size:0.92rem;">
+              Calculating seasonal distributions...
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D. UNUSUAL-WEATHER DETECTION (ANOMALIES) -->
+        <div id="subtab-anomalies" class="ww-subtab-pane" style="display: none;">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+              <div class="ww-card-title"><i class="bi bi-shield-exclamation text-danger"></i> Statistical Anomaly & Outlier Detection</div>
+              <div class="ww-card-subtitle">Detects heatwaves, sudden cold snaps, and precipitation extremes using IQR and Z-Scores</div>
+            </div>
+            
+            <div class="d-flex gap-2">
+              <select id="anomaly-var-select" class="form-select form-select-sm" style="width: auto;">
+                <option value="temperature">Temperature</option>
+                <option value="rainfall">Rainfall</option>
+                <option value="wind_speed">Wind Speed</option>
+              </select>
+              <select id="anomaly-method-select" class="form-select form-select-sm" style="width: auto;">
+                <option value="iqr">IQR Fence Method</option>
+                <option value="zscore">Z-Score Method (|z| > 2.5)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <div class="ww-stat-mini-card">
+                <div class="ww-stat-mini-label">Total Outliers Flagged</div>
+                <div id="stat-anomaly-count" class="ww-stat-mini-val text-danger">--</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="ww-stat-mini-card">
+                <div class="ww-stat-mini-label">Anomaly Percentage Rate</div>
+                <div id="stat-anomaly-pct" class="ww-stat-mini-val text-warning">--%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive bg-white bg-opacity-75 rounded-3 border p-3">
+            <h6 class="fw-bold mb-3"><i class="bi bi-flag-fill text-danger me-2"></i> Prominent Flagged Weather Events</h6>
+            <table class="ww-table-custom">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Observed Value</th>
+                  <th>Baseline Value</th>
+                  <th>Deviation</th>
+                  <th>Explanation & Statistical Evidence</th>
+                </tr>
+              </thead>
+              <tbody id="anomalies-table-body">
+                <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3E. FORECASTING ACCURACY METRICS -->
+        <div id="subtab-accuracy" class="ww-subtab-pane" style="display: none;">
+          <div class="ww-card-header mb-3">
+            <div>
+              <div class="ww-card-title"><i class="bi bi-award-fill text-primary"></i> Forecast Model Evaluation & Accuracy Metrics</div>
+              <div class="ww-card-subtitle">Historical backtesting: Seasonal Naive Baseline vs Exponential Smoothing (Holt-Winters)</div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="p-3 bg-white bg-opacity-75 rounded-3 border text-center">
+                <span class="badge bg-secondary mb-2">Model Baseline</span>
+                <h5 class="fw-bold">Seasonal Naive</h5>
+                <div class="d-flex justify-content-center gap-4 my-2">
+                  <div>
+                    <div class="text-muted" style="font-size:0.75rem;">MAE</div>
+                    <div id="stat-base-mae" class="fw-bold" style="font-size:1.4rem;">--°C</div>
+                  </div>
+                  <div>
+                    <div class="text-muted" style="font-size:0.75rem;">RMSE</div>
+                    <div id="stat-base-rmse" class="fw-bold" style="font-size:1.4rem;">--°C</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="p-3 bg-white bg-opacity-75 rounded-3 border text-center border-primary">
+                <span class="badge bg-primary mb-2">Evaluated Model</span>
+                <h5 class="fw-bold">Exponential Smoothing (Holt-Winters)</h5>
+                <div class="d-flex justify-content-center gap-4 my-2">
+                  <div>
+                    <div class="text-muted" style="font-size:0.75rem;">MAE</div>
+                    <div id="stat-es-mae" class="fw-bold text-primary" style="font-size:1.4rem;">--°C</div>
+                  </div>
+                  <div>
+                    <div class="text-muted" style="font-size:0.75rem;">RMSE</div>
+                    <div id="stat-es-rmse" class="fw-bold text-primary" style="font-size:1.4rem;">--°C</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-white bg-opacity-75 rounded-3 border text-center">
+            <h6 class="fw-bold text-success mb-2"><i class="bi bi-trophy-fill me-1"></i> Backtest Evaluation Verdict</h6>
+            <div id="accuracy-verdict" class="text-muted" style="font-size:0.95rem;">
+              Evaluating forecasting precision on holdout testing set...
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         TAB 4: FUTURE ANALYTICS & CLIMATE PREDICTIONS
+         ==================================================================== -->
+    <div id="tab-climate" class="ww-tab-pane" style="display: none;">
+      <div class="ww-card">
+        <div class="ww-card-header">
+          <div>
+            <div class="ww-card-title"><i class="bi bi-bullseye"></i> 12-Month Climate Projection Model</div>
+            <div class="ww-card-subtitle">Long-term predictive seasonal cycle, future temperature trajectory, and confidence bounds</div>
+          </div>
+          <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2">
+            <i class="bi bi-cpu-fill me-1"></i> Holt-Winters Predictive Fit
+          </span>
+        </div>
+
+        <div class="ww-climate-grid">
+          <div id="climate-chart-container" class="ww-chart-box mb-0"></div>
+
+          <div class="ww-climate-insights-card">
+            <h6 class="fw-bold mb-3"><i class="bi bi-compass-fill text-primary me-2"></i> Climate Forecast Insights</h6>
+            
+            <div class="ww-insight-item">
+              <div class="ww-insight-icon"><i class="bi bi-thermometer-sun"></i></div>
+              <div>
+                <div class="ww-insight-title">Projected Annual Mean</div>
+                <div id="climate-annual-mean" class="ww-insight-desc fw-semibold text-dark">--°C</div>
+              </div>
+            </div>
+
+            <div class="ww-insight-item">
+              <div class="ww-insight-icon"><i class="bi bi-sun"></i></div>
+              <div>
+                <div class="ww-insight-title">Warmest Peak Month</div>
+                <div id="climate-warmest" class="ww-insight-desc fw-semibold text-dark">--</div>
+              </div>
+            </div>
+
+            <div class="ww-insight-item">
+              <div class="ww-insight-icon"><i class="bi bi-snow"></i></div>
+              <div>
+                <div class="ww-insight-title">Coolest Low Month</div>
+                <div id="climate-coolest" class="ww-insight-desc fw-semibold text-dark">--</div>
+              </div>
+            </div>
+
+            <div class="ww-insight-item">
+              <div class="ww-insight-icon"><i class="bi bi-cloud-rain-heavy"></i></div>
+              <div>
+                <div class="ww-insight-title">Maximum Rainfall Month</div>
+                <div id="climate-wettest" class="ww-insight-desc fw-semibold text-dark">--</div>
+              </div>
+            </div>
+
+            <div class="ww-insight-item">
+              <div class="ww-insight-icon"><i class="bi bi-brightness-alt-high"></i></div>
+              <div>
+                <div class="ww-insight-title">Driest Month</div>
+                <div id="climate-driest" class="ww-insight-desc fw-semibold text-dark">--</div>
+              </div>
+            </div>
+
+            <div class="p-2 mt-2 bg-light rounded text-center text-muted" style="font-size:0.75rem;">
+              <i class="bi bi-shield-check text-success me-1"></i> Based on 95% Statistical Confidence Band
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         TAB 5: PREPAREDNESS & LIFESTYLE GUIDE
+         ==================================================================== -->
+    <div id="tab-preparedness" class="ww-tab-pane" style="display: none;">
+      <div class="ww-card">
+        <div class="ww-card-header">
+          <div>
+            <div class="ww-card-title"><i class="bi bi-bag-check-fill"></i> Smart Weather Preparedness & Lifestyle Guide</div>
+            <div class="ww-card-subtitle">Real-time lifestyle intelligence: what to pack, outfit layers, hydration targets, and commute safety</div>
+          </div>
+        </div>
+
+        <div class="ww-prep-grid">
+          <!-- 1. Gear & Essentials Checklist -->
+          <div class="ww-card bg-white bg-opacity-75">
+            <h6 class="fw-bold mb-3"><i class="bi bi-check2-square text-primary me-2"></i> Essentials & Gear Checklist</h6>
+            <div id="prep-gear-list" class="d-flex flex-column gap-3"></div>
+          </div>
+
+          <!-- 2. What to Wear & Attire Advice -->
+          <div class="ww-card bg-white bg-opacity-75">
+            <h6 class="fw-bold mb-3"><i class="bi bi-person-standing text-primary me-2"></i> What to Wear Today</h6>
+            <div class="p-3 bg-light rounded-3 border mb-3">
+              <div id="prep-attire-title" class="fw-bold text-dark mb-1" style="font-size:1.1rem;">--</div>
+              <div id="prep-attire-desc" class="text-muted" style="font-size:0.9rem;">--</div>
+            </div>
+
+            <h6 class="fw-bold mb-2"><i class="bi bi-cup-straw text-primary me-2"></i> Daily Hydration Target</h6>
+            <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 border">
+              <div style="font-size:2rem; color:var(--accent-primary);"><i class="bi bi-droplet-fill"></i></div>
+              <div>
+                <div id="prep-hydration-val" class="fw-bold text-dark" style="font-size:1.2rem;">-- Litres</div>
+                <div class="text-muted" style="font-size:0.78rem;">Calculated dynamically from live temperature & humidity</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Outdoor Feasibility & Commute Alert -->
+          <div class="ww-card bg-white bg-opacity-75 text-center">
+            <h6 class="fw-bold mb-3 text-start"><i class="bi bi-activity text-primary me-2"></i> Outdoor Activity Rating</h6>
+            <div class="ww-score-circle">
+              <span id="prep-activity-score">--</span>
+              <span class="ww-score-sub">/ 100</span>
+            </div>
+            <div id="prep-activity-verdict" class="fw-semibold text-dark mb-4" style="font-size: 0.95rem;">
+              Evaluating outdoor feasibility...
+            </div>
+
+            <div class="text-start border-top pt-3">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-bold" style="font-size:0.9rem;"><i class="bi bi-car-front-fill me-1"></i> Commute & Travel</span>
+                <span id="prep-commute-level" class="badge bg-secondary">Evaluating</span>
+              </div>
+              <div id="prep-commute-alert" class="text-muted" style="font-size:0.85rem;">
+                Checking road and visibility factors...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

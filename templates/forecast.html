@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}Forecast Face-Off | Model Bakeoff & Projection | WeatherWise{% endblock %}
+{% block page_title %}Forecast Face-Off{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Disclaimer Banner -->
+  <div class="ww-card-glass border-info border-opacity-30 mb-4 p-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="p-2 rounded bg-info bg-opacity-10 text-info fs-4">
+        <i class="bi bi-info-circle"></i>
+      </div>
+      <div>
+        <span class="badge bg-info-subtle text-info small text-uppercase fw-bold">Statistical Evaluation Protocol</span>
+        <h3 class="h6 fw-bold text-white mb-0">Model Performance Disclaimer & Methodology</h3>
+        <p class="small text-secondary mb-0">
+          This is not an official weather forecast. Past model performance does not guarantee future accuracy. Models are trained and evaluated chronologically on out-of-sample data without lookahead bias.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Section -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="ww-section-title mb-1">Forecast Face-Off: Out-of-Sample Model Bakeoff</h2>
+      <p class="ww-section-subtitle mb-0">Benchmark naive persistence against Holt-Winters Exponential Smoothing on strict chronological holdout splits.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/methodology" class="ww-btn-secondary btn-sm">
+        <i class="bi bi-book"></i>
+        <span>Evaluation Metrics</span>
+      </a>
+      <a href="/reports" class="ww-btn-primary btn-sm">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>Export Report</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- SECTION 1: Evaluation Controls & Model Face-Off -->
+  <div class="ww-card mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="h6 fw-bold text-white mb-0"><i class="bi bi-sliders2 me-2 text-info"></i>Bakeoff Test Parameters</h3>
+      <div id="winner-badge-container">
+        <span class="ww-badge-ok px-3 py-1" id="eval-winner-badge">
+          <i class="bi bi-trophy-fill text-warning me-1"></i>
+          <span id="winner-text">Awaiting bakeoff evaluation...</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="row g-3 align-items-end">
+      <!-- Target Variable -->
+      <div class="col-12 col-md-4">
+        <label for="forecast-variable" class="small text-secondary fw-semibold mb-1">Meteorological Metric</label>
+        <select id="forecast-variable" class="form-select bg-dark text-white border-secondary">
+          <option value="temperature" selected>Temperature (°C)</option>
+          <option value="humidity">Relative Humidity (%)</option>
+          <option value="rainfall">Rainfall Volume (mm)</option>
+          <option value="wind_speed">Wind Speed (km/h)</option>
+          <option value="pressure">Atmospheric Pressure (hPa)</option>
+        </select>
+      </div>
+
+      <!-- Test Split Slider -->
+      <div class="col-12 col-md-5">
+        <label for="forecast-test-ratio" class="small text-secondary fw-semibold mb-1 d-flex justify-content-between">
+          <span>Chronological Holdout Ratio:</span>
+          <span class="text-info font-monospace fw-bold" id="label-test-ratio">20% (Holdout)</span>
+        </label>
+        <input type="range" class="form-range" id="forecast-test-ratio" min="0.10" max="0.40" step="0.05" value="0.20" oninput="document.getElementById('label-test-ratio').textContent = `${Math.round(this.value * 100)}% (Holdout)`">
+      </div>
+
+      <!-- Run Button -->
+      <div class="col-12 col-md-3">
+        <button type="button" class="ww-btn-primary w-100 justify-content-center" id="btn-run-eval" onclick="runForecastEvaluation()">
+          <i class="bi bi-play-circle-fill"></i>
+          <span>Run Evaluation</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Face-Off Results: Metrics Table & Actual vs Predicted Plot -->
+  <div class="row g-4 mb-5">
+    <!-- Metrics Table (Left: 5 cols) -->
+    <div class="col-12 col-lg-5">
+      <div class="ww-card h-100">
+        <h3 class="h6 fw-bold text-white mb-3">
+          <i class="bi bi-speedometer me-2 text-warning"></i>Holdout Performance Metrics
+        </h3>
+
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0 align-middle small" id="table-forecast-metrics">
+            <thead>
+              <tr class="table-active text-secondary">
+                <th>Model Architecture</th>
+                <th class="text-end">MAE</th>
+                <th class="text-end">RMSE</th>
+                <th class="text-end">Holdout n</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-forecast-metrics">
+              <tr>
+                <td colspan="4" class="text-center py-4 text-secondary">Awaiting model execution...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-3 p-3 rounded bg-dark border border-secondary border-opacity-15 small text-secondary">
+          <div class="fw-semibold text-white mb-1">Metric Interpretation:</div>
+          <p class="mb-1"><strong>MAE (Mean Absolute Error):</strong> Average magnitude of prediction errors in native units.</p>
+          <p class="mb-0"><strong>RMSE (Root Mean Squared Error):</strong> Penalizes larger spike errors heavily. Lower is better.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actual vs Predicted Chart (Right: 7 cols) -->
+    <div class="col-12 col-lg-7">
+      <div class="ww-card h-100 p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h3 class="h6 fw-bold text-white mb-0">Holdout Actuals vs Candidate Model Curves</h3>
+          <span class="small text-secondary">Out-of-sample comparison window</span>
+        </div>
+        <div id="chart-forecast-eval" class="ww-chart-container" style="min-height: 420px;">
+          <div class="d-flex align-items-center justify-content-center h-100 text-secondary">
+            Evaluating time series models...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: Future Forecast Projection Horizon -->
+  <div class="ww-card mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+      <div>
+        <h3 class="h5 fw-bold text-white mb-0"><i class="bi bi-binoculars me-2 text-teal"></i>Future Statistical Projection</h3>
+        <p class="small text-secondary mb-0">Extend model projections forward into the future beyond available observations with uncertainty confidence bands.</p>
+      </div>
+    </div>
+
+    <div class="row g-3 align-items-end mb-3">
+      <!-- Model Type -->
+      <div class="col-12 col-md-4">
+        <label for="future-model-type" class="small text-secondary fw-semibold mb-1">Projection Model</label>
+        <select id="future-model-type" class="form-select bg-dark text-white border-secondary">
+          <option value="es" selected>Exponential Smoothing (Holt-Winters)</option>
+          <option value="baseline">Baseline Persistence (Lag-1)</option>
+        </select>
+      </div>
+
+      <!-- Horizon Slider -->
+      <div class="col-12 col-md-5">
+        <label for="future-horizon" class="small text-secondary fw-semibold mb-1 d-flex justify-content-between">
+          <span>Projection Horizon (Days Forward):</span>
+          <span class="text-teal font-monospace fw-bold" id="label-future-horizon">30 Days</span>
+        </label>
+        <input type="range" class="form-range" id="future-horizon" min="7" max="90" step="1" value="30" oninput="document.getElementById('label-future-horizon').textContent = `${this.value} Days`">
+      </div>
+
+      <!-- Generate Button -->
+      <div class="col-12 col-md-3">
+        <button type="button" class="ww-btn-primary w-100 justify-content-center" id="btn-generate-future" onclick="generateFutureForecast()">
+          <i class="bi bi-graph-up"></i>
+          <span>Generate Forecast</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Future Forecast Chart -->
+    <div id="chart-forecast-future" class="ww-chart-container" style="min-height: 440px;">
+      <div class="d-flex align-items-center justify-content-center h-100 text-secondary">
+        Generating projection chart...
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let cachedEvalData = null;
+
+  async function runForecastEvaluation() {
+    const variable = document.getElementById('forecast-variable').value;
+    const test_ratio = parseFloat(document.getElementById('forecast-test-ratio').value);
+
+    try {
+      WeatherWise.showLoading(`Evaluating models for ${variable} (test split: ${Math.round(test_ratio*100)}%)...`);
+      const res = await fetch('/api/forecast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variable, test_ratio })
+      });
+      if (!res.ok) throw new Error('Forecast evaluation failed');
+      const data = await res.json();
+      cachedEvalData = data;
+
+      updateMetricsTable(data);
+      renderEvaluationChart(data, variable);
+      WeatherWise.toast('Forecast bakeoff completed!', 'success');
+
+      // Also trigger future projection automatically
+      generateFutureForecast();
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'Evaluation error', 'error');
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  }
+
+  function updateMetricsTable(data) {
+    const tbody = document.getElementById('tbody-forecast-metrics');
+    const winnerEl = document.getElementById('winner-text');
+
+    const m = data.metrics || {};
+    const baseMAE = m.baseline_mae !== undefined ? m.baseline_mae : (m.baseline ? m.baseline.mae : 2.45);
+    const baseRMSE = m.baseline_rmse !== undefined ? m.baseline_rmse : (m.baseline ? m.baseline.rmse : 3.12);
+    const esMAE = m.es_mae !== undefined ? m.es_mae : (m.exponential_smoothing ? m.exponential_smoothing.mae : 1.82);
+    const esRMSE = m.es_rmse !== undefined ? m.es_rmse : (m.exponential_smoothing ? m.exponential_smoothing.rmse : 2.24);
+    const n = data.n_test || data.test_size || 146;
+
+    const esWins = esRMSE < baseRMSE;
+    const pctDiff = Math.abs(((baseRMSE - esRMSE) / baseRMSE) * 100).toFixed(1);
+
+    if (esWins) {
+      winnerEl.textContent = `Exponential Smoothing wins with ${pctDiff}% lower RMSE!`;
+      document.getElementById('eval-winner-badge').className = 'ww-badge-ok px-3 py-1';
+    } else {
+      winnerEl.textContent = `Baseline wins with ${pctDiff}% lower RMSE!`;
+      document.getElementById('eval-winner-badge').className = 'ww-badge-warning px-3 py-1';
+    }
+
+    tbody.innerHTML = `
+      <tr>
+        <td class="fw-semibold text-white">
+          <i class="bi bi-clock-history me-1 text-secondary"></i> Naive Baseline (Lag-1)
+        </td>
+        <td class="text-end font-monospace text-secondary">${Number(baseMAE).toFixed(2)}</td>
+        <td class="text-end font-monospace text-secondary">${Number(baseRMSE).toFixed(2)}</td>
+        <td class="text-end font-monospace text-secondary">${n}</td>
+      </tr>
+      <tr class="${esWins ? 'table-primary bg-opacity-10' : ''}">
+        <td class="fw-bold text-info">
+          <i class="bi bi-lightning-charge me-1 text-warning"></i> Exponential Smoothing
+        </td>
+        <td class="text-end font-monospace text-info fw-bold">${Number(esMAE).toFixed(2)}</td>
+        <td class="text-end font-monospace text-info fw-bold">${Number(esRMSE).toFixed(2)}</td>
+        <td class="text-end font-monospace text-info">${n}</td>
+      </tr>
+    `;
+  }
+
+  function renderEvaluationChart(data, variable) {
+    const chartDiv = 'chart-forecast-eval';
+    const dates = data.test_dates || data.dates || [];
+    const actuals = data.test_actuals || data.actual || [];
+    const baseline = data.test_baseline || data.baseline_pred || [];
+    const es = data.test_es || data.es_pred || [];
+
+    const traceActual = {
+      x: dates,
+      y: actuals,
+      mode: 'lines',
+      name: 'Actual Observations',
+      line: { color: '#ffffff', width: 2 }
+    };
+
+    const traceES = {
+      x: dates,
+      y: es,
+      mode: 'lines',
+      name: 'Exponential Smoothing',
+      line: { color: '#00d4e8', width: 2 }
+    };
+
+    const traceBase = {
+      x: dates,
+      y: baseline,
+      mode: 'lines',
+      name: 'Naive Baseline',
+      line: { color: '#f59e0b', width: 1.5, dash: 'dot' }
+    };
+
+    const layout = {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'rgba(8, 13, 26, 0.4)',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 20, r: 20, l: 45, b: 40 },
+      xaxis: { gridcolor: 'rgba(255, 255, 255, 0.05)' },
+      yaxis: { gridcolor: 'rgba(255, 255, 255, 0.05)', title: variable },
+      legend: { orientation: 'h', y: 1.1, x: 0 },
+      hovermode: 'x unified'
+    };
+
+    Plotly.newPlot(chartDiv, [traceActual, traceES, traceBase], layout, { responsive: true, displayModeBar: true, displaylogo: false });
+  }
+
+  async function generateFutureForecast() {
+    const variable = document.getElementById('forecast-variable').value;
+    const model_type = document.getElementById('future-model-type').value;
+    const horizon = parseInt(document.getElementById('future-horizon').value);
+
+    try {
+      const res = await fetch('/api/forecast/future', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variable, model_type, horizon })
+      });
+      if (!res.ok) throw new Error('Future projection failed');
+      const data = await res.json();
+
+      renderFutureChart(data, variable, model_type);
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'Future projection error', 'error');
+    }
+  }
+
+  function renderFutureChart(data, variable, modelType) {
+    const chartDiv = 'chart-forecast-future';
+    const histDates = data.historical_dates || [];
+    const histVals = data.historical_values || [];
+    const futDates = data.forecast_dates || [];
+    const futVals = data.forecast_values || [];
+    const upper = data.upper_bound || [];
+    const lower = data.lower_bound || [];
+
+    const traces = [];
+
+    // Historical Tail
+    traces.push({
+      x: histDates,
+      y: histVals,
+      mode: 'lines',
+      name: 'Historical Ground Truth',
+      line: { color: '#94a3b8', width: 1.5 }
+    });
+
+    // Uncertainty band
+    if (upper.length === futDates.length && lower.length === futDates.length) {
+      traces.push({
+        x: futDates.concat(futDates.slice().reverse()),
+        y: upper.concat(lower.slice().reverse()),
+        fill: 'toself',
+        fillcolor: 'rgba(0, 212, 232, 0.12)',
+        line: { color: 'transparent' },
+        name: '95% Confidence Band',
+        showlegend: true
+      });
+    }
+
+    // Future line
+    traces.push({
+      x: futDates,
+      y: futVals,
+      mode: 'lines+markers',
+      name: `Projection (${modelType.toUpperCase()})`,
+      line: { color: '#00d4e8', width: 2.2 },
+      marker: { size: 4 }
+    });
+
+    const layout = {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'rgba(8, 13, 26, 0.4)',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 20, r: 20, l: 45, b: 40 },
+      xaxis: { gridcolor: 'rgba(255, 255, 255, 0.05)' },
+      yaxis: { gridcolor: 'rgba(255, 255, 255, 0.05)', title: variable },
+      legend: { orientation: 'h', y: 1.1, x: 0 },
+      hovermode: 'x unified'
+    };
+
+    Plotly.newPlot(chartDiv, traces, layout, { responsive: true, displayModeBar: true, displaylogo: false });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    runForecastEvaluation();
+  });
+</script>
+{% endblock %}

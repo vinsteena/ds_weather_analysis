@@ -1,0 +1,670 @@
+{% extends "base.html" %}
+
+{% block title %}Investigation Workspace | WeatherWise{% endblock %}
+{% block page_title %}Investigation Workspace{% endblock %}
+
+{% block head_extra %}
+<style>
+  .ww-variable-pill {
+    cursor: pointer;
+    border: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--color-text-secondary);
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: var(--transition-smooth);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    user-select: none;
+  }
+  .ww-variable-pill:hover {
+    background: rgba(0, 212, 232, 0.08);
+    color: var(--color-accent-primary);
+    border-color: rgba(0, 212, 232, 0.3);
+  }
+  .ww-variable-pill.active {
+    background: linear-gradient(135deg, rgba(0, 212, 232, 0.2) 0%, rgba(20, 184, 166, 0.15) 100%);
+    border-color: var(--color-accent-primary);
+    color: var(--color-accent-primary);
+    font-weight: 600;
+    box-shadow: 0 0 12px rgba(0, 212, 232, 0.2);
+  }
+
+  .ww-dropzone {
+    border: 2px dashed var(--color-border);
+    border-radius: 10px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    background: rgba(8, 13, 26, 0.4);
+    transition: var(--transition-smooth);
+    cursor: pointer;
+  }
+  .ww-dropzone:hover, .ww-dropzone.dragover {
+    border-color: var(--color-accent-primary);
+    background: rgba(0, 212, 232, 0.05);
+  }
+
+  .stat-card-widget {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.15rem;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card-widget::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-teal));
+    opacity: 0.8;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Header Section -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="ww-section-title mb-1">Weather Investigation Workspace</h2>
+      <p class="ww-section-subtitle mb-0">Load meteorological observations, inspect continuous chronologies, and assess descriptive trends.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="ww-btn-secondary btn-sm" id="btn-open-preview" data-bs-toggle="modal" data-bs-target="#modalDataPreview">
+        <i class="bi bi-table"></i>
+        <span>Preview 20 Rows</span>
+      </button>
+      <a href="/data-trust" class="ww-btn-secondary btn-sm">
+        <i class="bi bi-shield-check text-info"></i>
+        <span>Trust Center</span>
+      </a>
+      <a href="/detective" class="ww-btn-primary btn-sm">
+        <i class="bi bi-search"></i>
+        <span>Launch Detective</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- LEFT COLUMN: Data Ingestion & Investigation Controls (col-lg-4) -->
+    <div class="col-12 col-lg-4 col-xl-3">
+      <div class="d-flex flex-column gap-3">
+
+        <!-- 1. Dataset Loader Card -->
+        <div class="ww-card">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="h6 fw-bold mb-0 text-white"><i class="bi bi-database-fill-gear me-2 text-info"></i>Dataset Source</h3>
+            <span id="badge-dataset-status" class="badge bg-secondary-subtle text-secondary small">Ready</span>
+          </div>
+
+          <!-- File Upload Form -->
+          <form id="upload-form" class="mb-3" enctype="multipart/form-data">
+            <div class="ww-dropzone mb-2" id="dropzone-area" onclick="document.getElementById('file-input').click()">
+              <i class="bi bi-cloud-arrow-up fs-2 text-info d-block mb-1"></i>
+              <span class="small fw-semibold text-white d-block" id="upload-text">Click or drag CSV here</span>
+              <span class="small text-secondary" style="font-size: 0.75rem;">Daily columns: date, temp, humidity, etc.</span>
+              <input type="file" id="file-input" name="file" accept=".csv" class="d-none" onchange="handleFileSelect(this)">
+            </div>
+            <button type="submit" class="ww-btn-primary w-100 justify-content-center btn-sm" id="btn-upload" disabled>
+              <i class="bi bi-upload"></i>
+              <span>Upload CSV Dataset</span>
+            </button>
+          </form>
+
+          <div class="text-center my-2 position-relative">
+            <hr class="border-secondary opacity-25">
+            <span class="position-absolute top-50 start-50 translate-middle px-2 bg-dark text-secondary small" style="font-size: 0.72rem;">OR BENCHMARK</span>
+          </div>
+
+          <!-- Sample Dataset Button -->
+          <button type="button" class="ww-btn-secondary w-100 justify-content-center btn-sm mt-1" id="btn-load-sample-ws" onclick="loadSampleWorkspace(event)">
+            <i class="bi bi-lightning-charge-fill text-warning"></i>
+            <span>Load 2-Year Sample Dataset</span>
+          </button>
+        </div>
+
+        <!-- 2. Loaded Dataset Metadata Card -->
+        <div class="ww-card" id="dataset-info-card">
+          <h3 class="h6 fw-bold mb-3 text-white"><i class="bi bi-info-circle me-2 text-teal"></i>Dataset Summary</h3>
+          <div class="ww-stat-row">
+            <span class="ww-stat-label">Dataset Name</span>
+            <span class="ww-stat-value text-info" id="ws-dataset-name">Not Loaded</span>
+          </div>
+          <div class="ww-stat-row">
+            <span class="ww-stat-label">Observation Type</span>
+            <span class="ww-stat-value" id="ws-dataset-type">--</span>
+          </div>
+          <div class="ww-stat-row">
+            <span class="ww-stat-label">Chronology</span>
+            <span class="ww-stat-value small" id="ws-dataset-range">--</span>
+          </div>
+          <div class="ww-stat-row">
+            <span class="ww-stat-label">Total Observations</span>
+            <span class="ww-stat-value" id="ws-dataset-rows">--</span>
+          </div>
+          <div class="mt-2 pt-2 border-top border-secondary border-opacity-10">
+            <span class="small text-secondary d-block mb-1">Available Variables:</span>
+            <div id="ws-available-vars" class="d-flex flex-wrap gap-1">
+              <span class="badge bg-dark border border-secondary small text-secondary">None</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Variable Selector & Query Filters -->
+        <div class="ww-card">
+          <h3 class="h6 fw-bold mb-3 text-white"><i class="bi bi-sliders2 me-2 text-info"></i>Analysis Variables</h3>
+
+          <div class="mb-3">
+            <label class="small text-secondary fw-semibold mb-2 d-block">Select Active Variable:</label>
+            <div class="d-flex flex-column gap-2" id="variable-selector-group">
+              <div class="ww-variable-pill active" data-var="temperature" onclick="selectVariable('temperature')">
+                <i class="bi bi-thermometer-half text-danger"></i>
+                <div class="d-flex justify-content-between w-100">
+                  <span>Temperature</span>
+                  <span class="small opacity-75">°C</span>
+                </div>
+              </div>
+              <div class="ww-variable-pill" data-var="humidity" onclick="selectVariable('humidity')">
+                <i class="bi bi-droplet-half text-info"></i>
+                <div class="d-flex justify-content-between w-100">
+                  <span>Humidity</span>
+                  <span class="small opacity-75">%</span>
+                </div>
+              </div>
+              <div class="ww-variable-pill" data-var="rainfall" onclick="selectVariable('rainfall')">
+                <i class="bi bi-cloud-rain-heavy-fill text-primary"></i>
+                <div class="d-flex justify-content-between w-100">
+                  <span>Rainfall</span>
+                  <span class="small opacity-75">mm</span>
+                </div>
+              </div>
+              <div class="ww-variable-pill" data-var="wind_speed" onclick="selectVariable('wind_speed')">
+                <i class="bi bi-wind text-teal"></i>
+                <div class="d-flex justify-content-between w-100">
+                  <span>Wind Speed</span>
+                  <span class="small opacity-75">km/h</span>
+                </div>
+              </div>
+              <div class="ww-variable-pill" data-var="pressure" onclick="selectVariable('pressure')">
+                <i class="bi bi-speedometer2 text-warning"></i>
+                <div class="d-flex justify-content-between w-100">
+                  <span>Pressure</span>
+                  <span class="small opacity-75">hPa</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label for="ws-date-start" class="small text-secondary mb-1">Start Date</label>
+              <input type="date" id="ws-date-start" class="form-control form-control-sm bg-dark text-white border-secondary">
+            </div>
+            <div class="col-6">
+              <label for="ws-date-end" class="small text-secondary mb-1">End Date</label>
+              <input type="date" id="ws-date-end" class="form-control form-control-sm bg-dark text-white border-secondary">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="ws-rolling-window" class="small text-secondary mb-1">Moving Average Overlay</label>
+            <select id="ws-rolling-window" class="form-select form-select-sm bg-dark text-white border-secondary" onchange="runAnalysis()">
+              <option value="none">Raw Measurements Only</option>
+              <option value="7" selected>7-Day Moving Average</option>
+              <option value="30">30-Day Moving Average</option>
+            </select>
+          </div>
+
+          <button type="button" class="ww-btn-primary w-100 justify-content-center" id="btn-analyze-ws" onclick="runAnalysis()">
+            <i class="bi bi-arrow-repeat"></i>
+            <span>Analyze & Refresh</span>
+          </button>
+        </div>
+
+        <!-- 4. Quick Links Navigation Card -->
+        <div class="ww-card">
+          <h3 class="h6 fw-bold mb-2 text-white"><i class="bi bi-box-arrow-up-right me-2 text-secondary"></i>Direct Engines</h3>
+          <div class="d-flex flex-column gap-1 small">
+            <a href="/detective" class="text-secondary text-decoration-none py-1 hover-primary d-flex align-items-center justify-content-between">
+              <span><i class="bi bi-search text-danger me-2"></i>Weather Detective</span>
+              <i class="bi bi-chevron-right text-muted"></i>
+            </a>
+            <a href="/time-machine" class="text-secondary text-decoration-none py-1 hover-primary d-flex align-items-center justify-content-between">
+              <span><i class="bi bi-clock-history text-warning me-2"></i>Time Machine</span>
+              <i class="bi bi-chevron-right text-muted"></i>
+            </a>
+            <a href="/seasons" class="text-secondary text-decoration-none py-1 hover-primary d-flex align-items-center justify-content-between">
+              <span><i class="bi bi-calendar3 text-info me-2"></i>Season Patterns</span>
+              <i class="bi bi-chevron-right text-muted"></i>
+            </a>
+            <a href="/what-if" class="text-secondary text-decoration-none py-1 hover-primary d-flex align-items-center justify-content-between">
+              <span><i class="bi bi-sliders text-teal me-2"></i>What-If Lab</span>
+              <i class="bi bi-chevron-right text-muted"></i>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Chart & Descriptive Statistics (col-lg-8) -->
+    <div class="col-12 col-lg-8 col-xl-9">
+      <div class="d-flex flex-column gap-4">
+
+        <!-- Stat Cards Row -->
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="stat-card-widget">
+              <span class="small text-secondary text-uppercase fw-semibold d-block mb-1">Mean Average</span>
+              <div class="h3 fw-bold text-white mb-0" id="card-stat-mean">--</div>
+              <span class="small text-secondary" id="card-stat-unit">--</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card-widget">
+              <span class="small text-secondary text-uppercase fw-semibold d-block mb-1">Maximum Peak</span>
+              <div class="h3 fw-bold text-danger mb-0" id="card-stat-max">--</div>
+              <span class="small text-secondary" id="card-stat-max-date">--</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card-widget">
+              <span class="small text-secondary text-uppercase fw-semibold d-block mb-1">Minimum Trough</span>
+              <div class="h3 fw-bold text-info mb-0" id="card-stat-min">--</div>
+              <span class="small text-secondary" id="card-stat-min-date">--</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card-widget">
+              <span class="small text-secondary text-uppercase fw-semibold d-block mb-1">Trend Trajectory</span>
+              <div class="h3 fw-bold text-teal mb-0" id="card-stat-trend">--</div>
+              <span class="small text-secondary" id="card-stat-slope">slope: --</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Time-Series Visualizer -->
+        <div class="ww-card p-3">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div>
+              <h3 class="h5 fw-bold text-white mb-0" id="chart-variable-title">Chronological Time-Series Visualizer</h3>
+              <p class="small text-secondary mb-0">High-resolution interactive timeline of observed values and trend trajectory.</p>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary" onclick="resetChartZoom()" title="Reset Plotly View">
+                <i class="bi bi-arrows-fullscreen"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Chart Div -->
+          <div id="chart-timeseries" class="ww-chart-container" style="min-height: 480px;">
+            <div class="d-flex flex-column align-items-center justify-content-center h-100 py-5 text-secondary">
+              <i class="bi bi-graph-up fs-1 mb-2 opacity-50"></i>
+              <span>Loading time-series data...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Automated Statistical Insight Takeaway Panel -->
+        <div class="ww-insight-panel">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-lightbulb-fill text-warning fs-5"></i>
+            <h4 class="h6 fw-bold text-white mb-0">Automated Statistical Takeaway</h4>
+          </div>
+          <p class="small text-secondary mb-0" id="insight-panel-text">
+            Load a dataset or execute an analysis query to generate a meteorological synthesis.
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /.row -->
+
+</div><!-- /.container-fluid -->
+
+<!-- Data Preview Modal (first 20 rows) -->
+<div class="modal fade" id="modalDataPreview" tabindex="-1" aria-labelledby="modalDataPreviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content bg-dark border-secondary">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title text-white" id="modalDataPreviewLabel">
+          <i class="bi bi-table text-info me-2"></i>Dataset Head Preview (First 20 Observations)
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table table-dark table-hover table-striped mb-0 small" id="table-preview-body">
+            <thead>
+              <tr class="table-active text-secondary" id="table-preview-head">
+                <th>#</th>
+                <th>date</th>
+                <th>temperature</th>
+                <th>humidity</th>
+                <th>rainfall</th>
+                <th>wind_speed</th>
+                <th>pressure</th>
+              </tr>
+            </thead>
+            <tbody id="preview-rows">
+              <tr><td colspan="7" class="text-center py-4 text-secondary">No observations loaded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary border-opacity-25">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <a href="/data-trust" class="ww-btn-primary btn-sm">Audit Data Quality</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let currentVariable = 'temperature';
+  let cachedDatasetInfo = null;
+
+  function handleFileSelect(input) {
+    const file = input.files[0];
+    const btn = document.getElementById('btn-upload');
+    const textEl = document.getElementById('upload-text');
+    if (file) {
+      textEl.textContent = file.name;
+      btn.disabled = false;
+    } else {
+      textEl.textContent = 'Click or drag CSV here';
+      btn.disabled = true;
+    }
+  }
+
+  // Upload form handler
+  document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('file-input');
+    if (!fileInput.files || fileInput.files.length === 0) return;
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+      WeatherWise.showLoading('Uploading and parsing CSV records...');
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) throw new Error('CSV upload failed');
+      const data = await res.json();
+      WeatherWise.toast(`Successfully imported ${data.rows || 'new'} observations!`, 'success');
+      await initWorkspace();
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'Upload error', 'error');
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  });
+
+  // Sample load handler
+  async function loadSampleWorkspace(e) {
+    if (e) e.preventDefault();
+    try {
+      WeatherWise.showLoading('Loading benchmark dataset...');
+      const res = await fetch('/api/sample');
+      if (!res.ok) throw new Error('Sample fetch failed');
+      const data = await res.json();
+      WeatherWise.toast('Benchmark dataset ready!', 'success');
+      await initWorkspace();
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'Sample load error', 'error');
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  }
+
+  // Variable selector pill
+  function selectVariable(varName) {
+    currentVariable = varName;
+    document.querySelectorAll('.ww-variable-pill').forEach(pill => {
+      if (pill.getAttribute('data-var') === varName) {
+        pill.classList.add('active');
+      } else {
+        pill.classList.remove('active');
+      }
+    });
+    runAnalysis();
+  }
+
+  // Preview button click
+  document.getElementById('btn-open-preview').addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/preview');
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = data.preview || data.data || data;
+      if (!Array.isArray(rows) || rows.length === 0) return;
+
+      const keys = Object.keys(rows[0]);
+      const head = document.getElementById('table-preview-head');
+      head.innerHTML = `<th>#</th>` + keys.map(k => `<th>${k}</th>`).join('');
+
+      const tbody = document.getElementById('preview-rows');
+      tbody.innerHTML = rows.map((r, i) => {
+        return `<tr><td>${i+1}</td>` + keys.map(k => `<td>${r[k] !== null && r[k] !== undefined ? r[k] : '<span class="text-danger">NULL</span>'}</td>`).join('') + `</tr>`;
+      }).join('');
+    } catch (e) {
+      console.error('Preview error', e);
+    }
+  });
+
+  // Run analysis for current variable & date range
+  async function runAnalysis() {
+    try {
+      WeatherWise.showLoading(`Computing ${currentVariable} trends...`);
+      const startDate = document.getElementById('ws-date-start').value;
+      const endDate = document.getElementById('ws-date-end').value;
+      const rolling = document.getElementById('ws-rolling-window').value;
+
+      // 1. Fetch descriptive statistics
+      let statsUrl = `/api/stats?variable=${encodeURIComponent(currentVariable)}`;
+      const statsRes = await fetch(statsUrl);
+      if (statsRes.ok) {
+        const stats = await statsRes.json();
+        updateStatsCards(stats);
+      }
+
+      // 2. Fetch trendline and time-series data
+      let trendUrl = `/api/trend?variable=${encodeURIComponent(currentVariable)}`;
+      if (startDate) trendUrl += `&start=${startDate}`;
+      if (endDate) trendUrl += `&end=${endDate}`;
+      if (rolling && rolling !== 'none') trendUrl += `&rolling=${rolling}`;
+
+      const trendRes = await fetch(trendUrl);
+      if (!trendRes.ok) throw new Error('Failed to compute time series trend');
+      const trendData = await trendRes.json();
+
+      renderTimeseriesChart(trendData);
+      updateInsightPanel(trendData);
+
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'Analysis error', 'error');
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  }
+
+  function updateStatsCards(stats) {
+    const units = { temperature: '°C', humidity: '%', rainfall: 'mm', wind_speed: 'km/h', pressure: 'hPa' };
+    const u = units[currentVariable] || '';
+
+    document.getElementById('card-stat-unit').textContent = u;
+    document.getElementById('card-stat-mean').textContent = stats.mean !== undefined ? `${stats.mean} ${u}` : '--';
+    document.getElementById('card-stat-max').textContent = stats.max !== undefined ? `${stats.max} ${u}` : '--';
+    document.getElementById('card-stat-max-date').textContent = stats.max_date ? `recorded: ${stats.max_date}` : 'peak value';
+    document.getElementById('card-stat-min').textContent = stats.min !== undefined ? `${stats.min} ${u}` : '--';
+    document.getElementById('card-stat-min-date').textContent = stats.min_date ? `recorded: ${stats.min_date}` : 'trough value';
+
+    const dir = stats.trend_direction || (stats.slope > 0 ? 'Warming' : stats.slope < 0 ? 'Cooling' : 'Stationary');
+    document.getElementById('card-stat-trend').textContent = dir;
+    document.getElementById('card-stat-slope').textContent = stats.slope !== undefined ? `slope: ${stats.slope} / day` : 'slope: steady';
+  }
+
+  function updateInsightPanel(trendData) {
+    const textEl = document.getElementById('insight-panel-text');
+    const titleEl = document.getElementById('chart-variable-title');
+    const varLabel = currentVariable.replace('_', ' ').toUpperCase();
+    titleEl.textContent = `${varLabel} Chronological Analysis`;
+
+    if (trendData.insight) {
+      textEl.textContent = trendData.insight;
+    } else {
+      const slopeDesc = trendData.slope > 0 ? 'positive upward trajectory' : trendData.slope < 0 ? 'downward trend' : 'stable stationary baseline';
+      textEl.textContent = `The chronological series for ${currentVariable} demonstrates a ${slopeDesc}. Seasonal oscillations dominate the variance, with maximum amplitude observed during mid-year cycles.`;
+    }
+  }
+
+  function renderTimeseriesChart(data) {
+    const chartDiv = 'chart-timeseries';
+    // If charts.js function is available
+    if (window.WeatherWise && window.WeatherWise.charts && typeof window.WeatherWise.charts.plotTimeSeries === 'function') {
+      window.WeatherWise.charts.plotTimeSeries(data, chartDiv);
+      return;
+    }
+
+    // High fidelity built-in Plotly fallback
+    const dates = data.dates || data.date || [];
+    const values = data.values || data.observed || [];
+    const trend = data.trend || data.trendline || [];
+    const rolling = data.rolling || [];
+
+    const traces = [];
+
+    // Raw points / line
+    traces.push({
+      x: dates,
+      y: values,
+      mode: 'lines',
+      name: currentVariable,
+      line: { color: '#00d4e8', width: 1.8 },
+      opacity: 0.85
+    });
+
+    // Trendline
+    if (trend && trend.length === dates.length) {
+      traces.push({
+        x: dates,
+        y: trend,
+        mode: 'lines',
+        name: 'Linear Trend',
+        line: { color: '#f59e0b', width: 2.2, dash: 'dash' }
+      });
+    }
+
+    // Moving average
+    if (rolling && rolling.length === dates.length) {
+      traces.push({
+        x: dates,
+        y: rolling,
+        mode: 'lines',
+        name: 'Moving Average',
+        line: { color: '#14b8a6', width: 2.5 }
+      });
+    }
+
+    const layout = {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'rgba(8, 13, 26, 0.4)',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 30, r: 20, l: 50, b: 40 },
+      xaxis: {
+        gridcolor: 'rgba(255, 255, 255, 0.05)',
+        zerolinecolor: 'rgba(255, 255, 255, 0.1)',
+        tickfont: { color: '#94a3b8' }
+      },
+      yaxis: {
+        gridcolor: 'rgba(255, 255, 255, 0.05)',
+        zerolinecolor: 'rgba(255, 255, 255, 0.1)',
+        tickfont: { color: '#94a3b8' }
+      },
+      legend: {
+        orientation: 'h',
+        y: 1.1,
+        x: 0,
+        font: { color: '#e2f0ff' }
+      },
+      hovermode: 'x unified'
+    };
+
+    const config = { responsive: true, displayModeBar: true, displaylogo: false };
+    Plotly.newPlot(chartDiv, traces, layout, config);
+  }
+
+  function resetChartZoom() {
+    const el = document.getElementById('chart-timeseries');
+    if (el && el.data) {
+      Plotly.relayout(el, {
+        'xaxis.autorange': true,
+        'yaxis.autorange': true
+      });
+    }
+  }
+
+  async function initWorkspace() {
+    try {
+      const res = await fetch('/api/dataset-info');
+      if (res.ok) {
+        const info = await res.json();
+        cachedDatasetInfo = info;
+        WeatherWise.updateTopbar(info);
+
+        document.getElementById('ws-dataset-name').textContent = info.dataset_name || 'Active CSV';
+        document.getElementById('ws-dataset-type').innerHTML = info.is_synthetic ? 
+          '<span class="badge bg-warning-subtle text-warning border border-warning-subtle">Synthetic Benchmark</span>' : 
+          '<span class="badge bg-success-subtle text-success border border-success-subtle">Real Station</span>';
+
+        const start = info.date_range ? (info.date_range.start || info.date_range[0]) : '';
+        const end = info.date_range ? (info.date_range.end || info.date_range[1]) : '';
+        document.getElementById('ws-dataset-range').textContent = `${start} to ${end}`;
+        document.getElementById('ws-dataset-rows').textContent = `${Number(info.rows || 0).toLocaleString()} records`;
+
+        if (start && end) {
+          document.getElementById('ws-date-start').value = start;
+          document.getElementById('ws-date-end').value = end;
+        }
+
+        const varsBox = document.getElementById('ws-available-vars');
+        if (info.available_variables && info.available_variables.length > 0) {
+          varsBox.innerHTML = info.available_variables.map(v => 
+            `<span class="badge bg-dark border border-secondary text-info">${v}</span>`
+          ).join('');
+        }
+
+        document.getElementById('badge-dataset-status').className = 'badge bg-success-subtle text-success';
+        document.getElementById('badge-dataset-status').textContent = 'Dataset Loaded';
+      }
+    } catch (e) {
+      console.warn('Dataset info check failed', e);
+    }
+    await runAnalysis();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initWorkspace();
+  });
+</script>
+{% endblock %}

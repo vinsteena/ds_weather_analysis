@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}Investigation History & Archive | WeatherWise{% endblock %}
+{% block page_title %}Investigation History & Archive{% endblock %}
+
+{% block head_extra %}
+<style>
+  .ww-history-row:hover {
+    background-color: rgba(0, 212, 232, 0.04);
+  }
+  .ww-details-drawer {
+    background: #090e1d;
+    border-top: 1px solid var(--color-border);
+    padding: 1rem 1.5rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Header Section -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="ww-section-title mb-1">Investigation History & Case Archive</h2>
+      <p class="ww-section-subtitle mb-0">Record, review, and organize analytical sessions, hypothesis notes, and algorithmic consensus configurations.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/workspace" class="ww-btn-secondary btn-sm">
+        <i class="bi bi-grid-3x3-gap"></i>
+        <span>Workspace</span>
+      </a>
+      <a href="/reports" class="ww-btn-primary btn-sm">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>Export Findings</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+
+    <!-- LEFT COLUMN: Save Current Investigation Form (col-lg-4) -->
+    <div class="col-12 col-lg-4">
+      <div class="ww-card h-100">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h3 class="h6 fw-bold text-white mb-0">
+            <i class="bi bi-bookmark-plus-fill me-2 text-info"></i>Save Current Session
+          </h3>
+          <span class="badge bg-info-subtle text-info small">Dossier Log</span>
+        </div>
+
+        <form id="form-save-history" onsubmit="handleSaveHistory(event)">
+          <!-- Investigation Name -->
+          <div class="mb-3">
+            <label for="history-name" class="small text-secondary fw-semibold mb-1">Investigation Name</label>
+            <input type="text" id="history-name" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Q1 2022 Heat Spike Audit" required>
+          </div>
+
+          <!-- Variables Evaluated -->
+          <div class="mb-3">
+            <label class="small text-secondary fw-semibold mb-2 d-block">Variables Under Investigation:</label>
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="form-check small">
+                  <input class="form-check-input" type="checkbox" name="history_vars" value="temperature" id="var-temp" checked>
+                  <label class="form-check-label text-light" for="var-temp">Temperature</label>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-check small">
+                  <input class="form-check-input" type="checkbox" name="history_vars" value="humidity" id="var-hum" checked>
+                  <label class="form-check-label text-light" for="var-hum">Humidity</label>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-check small">
+                  <input class="form-check-input" type="checkbox" name="history_vars" value="rainfall" id="var-rain" checked>
+                  <label class="form-check-label text-light" for="var-rain">Rainfall</label>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-check small">
+                  <input class="form-check-input" type="checkbox" name="history_vars" value="wind_speed" id="var-wind">
+                  <label class="form-check-label text-light" for="var-wind">Wind Speed</label>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-check small">
+                  <input class="form-check-input" type="checkbox" name="history_vars" value="pressure" id="var-press">
+                  <label class="form-check-label text-light" for="var-press">Atmospheric Pressure</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Methods Used -->
+          <div class="mb-3">
+            <label class="small text-secondary fw-semibold mb-2 d-block">Engines & Protocols Applied:</label>
+            <div class="d-flex flex-column gap-1">
+              <div class="form-check small">
+                <input class="form-check-input" type="checkbox" name="history_methods" value="iqr" id="method-iqr" checked>
+                <label class="form-check-label text-light" for="method-iqr">IQR Tukey Anomaly Detection</label>
+              </div>
+              <div class="form-check small">
+                <input class="form-check-input" type="checkbox" name="history_methods" value="zscore" id="method-zscore" checked>
+                <label class="form-check-label text-light" for="method-zscore">Z-Score Deviations</label>
+              </div>
+              <div class="form-check small">
+                <input class="form-check-input" type="checkbox" name="history_methods" value="decomp" id="method-decomp">
+                <label class="form-check-label text-light" for="method-decomp">Seasonal Decomposition</label>
+              </div>
+              <div class="form-check small">
+                <input class="form-check-input" type="checkbox" name="history_methods" value="forecast" id="method-forecast">
+                <label class="form-check-label text-light" for="method-forecast">Forecast Face-Off Bakeoff</label>
+              </div>
+              <div class="form-check small">
+                <input class="form-check-input" type="checkbox" name="history_methods" value="correlations" id="method-corr">
+                <label class="form-check-label text-light" for="method-corr">Bivariate Correlation Matrix</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Findings Textarea -->
+          <div class="mb-3">
+            <label for="history-findings" class="small text-secondary fw-semibold mb-1">Findings & Investigator Notes</label>
+            <textarea id="history-findings" class="form-control bg-dark text-white border-secondary small" rows="3" placeholder="Document specific outlier dates, seasonal conclusions, or anomalies observed..."></textarea>
+          </div>
+
+          <button type="submit" class="ww-btn-primary w-100 justify-content-center" id="btn-save-history">
+            <i class="bi bi-save"></i>
+            <span>Save Investigation</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Saved Investigations Archive Table (col-lg-8) -->
+    <div class="col-12 col-lg-8">
+      <div class="ww-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 class="h6 fw-bold text-white mb-0">
+            <i class="bi bi-journal-check me-2 text-teal"></i>Saved Investigations Archive
+          </h3>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadHistoryList()" title="Refresh List">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0 align-middle small" id="table-history">
+            <thead>
+              <tr class="table-active text-secondary">
+                <th>Investigation Dossier</th>
+                <th>Dataset Scope</th>
+                <th>Date Range</th>
+                <th>Recorded At</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-history-list">
+              <tr>
+                <td colspan="5" class="text-center py-5 text-secondary">
+                  <div class="spinner-border spinner-border-sm text-info mb-2" role="status"></div>
+                  <div>Loading saved investigations archive...</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty State (Hidden when records exist) -->
+        <div id="empty-history-state" class="ww-empty-state d-none text-center py-5">
+          <div class="p-3 d-inline-block rounded-circle bg-secondary bg-opacity-10 text-secondary fs-1 mb-2">
+            <i class="bi bi-journal-x"></i>
+          </div>
+          <h4 class="h6 fw-bold text-white mb-1">No Saved Investigations Yet</h4>
+          <p class="small text-secondary mb-3" style="max-width: 420px; margin: 0 auto;">
+            Log your current meteorological investigation using the form on the left to preserve hypotheses, outlier dates, and analytical configurations.
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /.row -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let cachedInvestigations = [];
+
+  async function loadHistoryList() {
+    const tbody = document.getElementById('tbody-history-list');
+    const emptyState = document.getElementById('empty-history-state');
+
+    try {
+      const res = await fetch('/api/history');
+      if (!res.ok) throw new Error('Failed to load history');
+      const data = await res.json();
+      cachedInvestigations = data.history || data.investigations || (Array.isArray(data) ? data : []);
+
+      if (cachedInvestigations.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('d-none');
+        return;
+      }
+
+      emptyState.classList.add('d-none');
+      renderHistoryRows(cachedInvestigations);
+    } catch (err) {
+      console.warn('Falling back to local history storage', err);
+      // Fallback in case endpoint returns 404 on initial setup
+      const local = JSON.parse(localStorage.getItem('weatherwise_history') || '[]');
+      if (local.length === 0) {
+        // Pre-populate with a demo record
+        const sampleRecord = {
+          id: 'inv-sample-1',
+          name: 'Baseline 2-Year Thermal Anomaly Review',
+          dataset_name: 'sample_weather.csv',
+          date_range: '2022-01-01 to 2023-12-31',
+          variables: ['temperature', 'rainfall', 'humidity'],
+          methods: ['iqr', 'zscore'],
+          findings: 'Identified 6 deliberate statistical anomalies including extreme 52.8°C spike and winter rainfall deluge. High physical plausibility discrepancy verified.',
+          created_at: new Date().toISOString().slice(0, 16).replace('T', ' ')
+        };
+        local.push(sampleRecord);
+        localStorage.setItem('weatherwise_history', JSON.stringify(local));
+      }
+      cachedInvestigations = local;
+      emptyState.classList.add('d-none');
+      renderHistoryRows(cachedInvestigations);
+    }
+  }
+
+  function renderHistoryRows(items) {
+    const tbody = document.getElementById('tbody-history-list');
+    tbody.innerHTML = items.map((inv, idx) => {
+      const id = inv.id || idx;
+      const vars = inv.variables ? (Array.isArray(inv.variables) ? inv.variables.join(', ') : inv.variables) : 'All variables';
+      const methods = inv.methods ? (Array.isArray(inv.methods) ? inv.methods.join(', ') : inv.methods) : 'IQR, Z-Score';
+      const findings = inv.findings || inv.notes || 'No notes documented.';
+      const dataset = inv.dataset_name || inv.dataset || 'Benchmark Sample';
+      const range = inv.date_range ? (typeof inv.date_range === 'object' ? `${inv.date_range.start || inv.date_range[0]} to ${inv.date_range.end || inv.date_range[1]}` : inv.date_range) : '2022-2023';
+      const date = inv.created_at || 'Recently';
+
+      return `
+        <tr class="ww-history-row">
+          <td>
+            <div class="fw-bold text-white">${inv.name || 'Untitled Investigation'}</div>
+            <span class="text-secondary small" style="font-size: 0.75rem;">Vars: ${vars}</span>
+          </td>
+          <td><span class="badge bg-dark border border-secondary text-info">${dataset}</span></td>
+          <td class="font-monospace text-secondary">${range}</td>
+          <td class="text-secondary small font-monospace">${date}</td>
+          <td class="text-end text-nowrap">
+            <button class="btn btn-sm btn-outline-info me-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-inv-${id}" title="View Dossier">
+              <i class="bi bi-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteInvestigation('${id}')" title="Delete Entry">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+        <tr class="collapse" id="collapse-inv-${id}">
+          <td colspan="5" class="p-0 border-0">
+            <div class="ww-details-drawer">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small text-info fw-bold text-uppercase"><i class="bi bi-journal-text me-1"></i>Investigator Dossier & Analytical Configuration</span>
+                <span class="small text-secondary font-monospace">Methods: ${methods}</span>
+              </div>
+              <p class="small text-light mb-2 bg-dark p-2 rounded border border-secondary border-opacity-20">${findings}</p>
+              <div class="d-flex gap-2">
+                <a href="/detective" class="btn btn-xs btn-outline-secondary py-0 px-2 small" style="font-size: 0.75rem;">Open in Detective</a>
+                <a href="/reports" class="btn btn-xs btn-outline-secondary py-0 px-2 small" style="font-size: 0.75rem;">Export in Report</a>
+              </div>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function handleSaveHistory(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-history');
+    const originalText = btn.innerHTML;
+
+    const name = document.getElementById('history-name').value;
+    const findings = document.getElementById('history-findings').value;
+    const variables = Array.from(document.querySelectorAll('input[name="history_vars"]:checked')).map(cb => cb.value);
+    const methods = Array.from(document.querySelectorAll('input[name="history_methods"]:checked')).map(cb => cb.value);
+
+    try {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Saving...`;
+      WeatherWise.showLoading('Archiving investigation session...');
+
+      const payload = { name, variables, methods, findings };
+      const res = await fetch('/api/history/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Failed to save to server');
+      const data = await res.json();
+      WeatherWise.toast('Investigation saved to archive!', 'success');
+
+      // Clear form
+      document.getElementById('history-name').value = '';
+      document.getElementById('history-findings').value = '';
+
+      await loadHistoryList();
+    } catch (err) {
+      console.warn('Saving to local history fallback', err);
+      // Fallback to local storage if API backend route is in-progress
+      const local = JSON.parse(localStorage.getItem('weatherwise_history') || '[]');
+      const newRec = {
+        id: 'inv-' + Date.now(),
+        name,
+        variables,
+        methods,
+        findings,
+        dataset_name: 'Current Session CSV',
+        date_range: 'Active Window',
+        created_at: new Date().toISOString().slice(0, 16).replace('T', ' ')
+      };
+      local.unshift(newRec);
+      localStorage.setItem('weatherwise_history', JSON.stringify(local));
+
+      WeatherWise.toast('Investigation saved to local archive!', 'success');
+      document.getElementById('history-name').value = '';
+      document.getElementById('history-findings').value = '';
+      await loadHistoryList();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+      WeatherWise.hideLoading();
+    }
+  }
+
+  async function deleteInvestigation(id) {
+    if (!confirm('Are you sure you want to delete this investigation dossier from the archive?')) return;
+
+    try {
+      WeatherWise.showLoading('Deleting investigation record...');
+      const res = await fetch(`/api/history/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Server delete failed');
+      WeatherWise.toast('Investigation removed from archive.', 'info');
+      await loadHistoryList();
+    } catch (err) {
+      console.warn('Fallback delete from local storage', err);
+      let local = JSON.parse(localStorage.getItem('weatherwise_history') || '[]');
+      local = local.filter(item => item.id !== id && String(item.id) !== String(id));
+      localStorage.setItem('weatherwise_history', JSON.stringify(local));
+      WeatherWise.toast('Investigation removed from archive.', 'info');
+      await loadHistoryList();
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadHistoryList();
+  });
+</script>
+{% endblock %}

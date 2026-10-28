@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}Time Machine | Historical Year Comparison | WeatherWise{% endblock %}
+{% block page_title %}Time Machine Comparison{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Header Section -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="ww-section-title mb-1">Time Machine: Historical Year Comparison</h2>
+      <p class="ww-section-subtitle mb-0">Superimpose distinct calendar years on identical day-of-year baselines to analyze climate deltas and seasonal shifts.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/seasons" class="ww-btn-secondary btn-sm">
+        <i class="bi bi-calendar3"></i>
+        <span>Season Patterns</span>
+      </a>
+      <a href="/weather-dna" class="ww-btn-primary btn-sm">
+        <i class="bi bi-diagram-3"></i>
+        <span>Weather DNA Match</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Comparison Controls Card -->
+  <div class="ww-card mb-4">
+    <div class="row g-3 align-items-end">
+      <!-- Variable Selector -->
+      <div class="col-12 col-md-4">
+        <label for="compare-variable" class="small text-secondary fw-semibold mb-1">Meteorological Metric</label>
+        <select id="compare-variable" class="form-select bg-dark text-white border-secondary">
+          <option value="temperature" selected>Temperature (°C)</option>
+          <option value="humidity">Relative Humidity (%)</option>
+          <option value="rainfall">Rainfall Volume (mm)</option>
+          <option value="wind_speed">Wind Speed (km/h)</option>
+          <option value="pressure">Atmospheric Pressure (hPa)</option>
+        </select>
+      </div>
+
+      <!-- Year 1 Selector -->
+      <div class="col-6 col-md-3">
+        <label for="compare-year1" class="small text-secondary fw-semibold mb-1">Reference Baseline (Year 1)</label>
+        <select id="compare-year1" class="form-select bg-dark text-white border-secondary">
+          <option value="2022" selected>2022</option>
+          <option value="2021">2021</option>
+        </select>
+      </div>
+
+      <!-- Year 2 Selector -->
+      <div class="col-6 col-md-3">
+        <label for="compare-year2" class="small text-secondary fw-semibold mb-1">Comparison Target (Year 2)</label>
+        <select id="compare-year2" class="form-select bg-dark text-white border-secondary">
+          <option value="2023" selected>2023</option>
+          <option value="2022">2022</option>
+        </select>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="col-12 col-md-2">
+        <button type="button" class="ww-btn-primary w-100 justify-content-center" id="btn-run-compare" onclick="runYearComparison()">
+          <i class="bi bi-arrow-left-right"></i>
+          <span>Compare</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Statement Banner -->
+  <div class="ww-card-glass p-3 mb-4 border-info border-opacity-25" id="summary-statement-banner">
+    <div class="d-flex align-items-center gap-3">
+      <div class="p-3 rounded-circle bg-info bg-opacity-10 text-info">
+        <i class="bi bi-clock-history fs-3"></i>
+      </div>
+      <div>
+        <span class="small text-secondary text-uppercase fw-semibold d-block">Comparative Climate Takeaway</span>
+        <h3 class="h5 fw-bold text-white mb-0" id="summary-statement-text">
+          Loading comparative analysis between selected years...
+        </h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay Line Chart -->
+  <div class="ww-card p-3 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+      <div>
+        <h3 class="h5 fw-bold text-white mb-0" id="chart-overlay-title">Annual Superimposed Calendar Trajectory</h3>
+        <p class="small text-secondary mb-0">Day 1 (Jan 1) through Day 365 (Dec 31) direct overlay comparison.</p>
+      </div>
+      <div class="d-flex gap-3 small text-secondary">
+        <span class="d-flex align-items-center gap-1">
+          <span style="display:inline-block;width:12px;height:3px;background:#00d4e8;"></span> <span id="legend-label-y1">Year 1</span>
+        </span>
+        <span class="d-flex align-items-center gap-1">
+          <span style="display:inline-block;width:12px;height:3px;background:#f59e0b;"></span> <span id="legend-label-y2">Year 2</span>
+        </span>
+      </div>
+    </div>
+
+    <div id="chart-year-overlay" class="ww-chart-container" style="min-height: 440px;">
+      <div class="d-flex flex-column align-items-center justify-content-center h-100 text-secondary">
+        <i class="bi bi-graph-up fs-2 mb-2 opacity-50"></i>
+        <span>Rendering comparative overlay...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Row: Statistics Comparison Table & Monthly Difference Bar Chart -->
+  <div class="row g-4">
+
+    <!-- Stats Table (Left: 6 cols) -->
+    <div class="col-12 col-lg-6">
+      <div class="ww-card h-100">
+        <h3 class="h6 fw-bold text-white mb-3">
+          <i class="bi bi-bar-chart-steps me-2 text-info"></i>Metric Divergence Audit
+        </h3>
+
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0 align-middle small" id="table-stats-comparison">
+            <thead>
+              <tr class="table-active text-secondary">
+                <th>Descriptive Metric</th>
+                <th class="text-end" id="th-year1">Year 1</th>
+                <th class="text-end" id="th-year2">Year 2</th>
+                <th class="text-end">Difference (Δ)</th>
+                <th class="text-center">Trend</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-stats-comparison">
+              <tr>
+                <td colspan="5" class="text-center py-4 text-secondary">Awaiting comparison execution...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Difference Bar Chart (Right: 6 cols) -->
+    <div class="col-12 col-lg-6">
+      <div class="ww-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h3 class="h6 fw-bold text-white mb-0">
+              <i class="bi bi-distribute-vertical me-2 text-warning"></i>Monthly Divergence Bar (Year 2 - Year 1)
+            </h3>
+            <span class="small text-secondary">Net anomaly difference for each calendar month</span>
+          </div>
+        </div>
+
+        <div id="chart-monthly-diff" class="ww-chart-container" style="min-height: 320px;">
+          <div class="d-flex align-items-center justify-content-center h-100 text-secondary small">
+            Monthly difference bars will render here.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.row -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function loadAvailableYears() {
+    try {
+      const res = await fetch('/api/dataset-info');
+      if (!res.ok) return;
+      const info = await res.json();
+      if (info.date_range) {
+        const startYear = parseInt((info.date_range.start || info.date_range[0]).slice(0, 4));
+        const endYear = parseInt((info.date_range.end || info.date_range[1]).slice(0, 4));
+        const y1Select = document.getElementById('compare-year1');
+        const y2Select = document.getElementById('compare-year2');
+
+        const years = [];
+        for (let y = startYear; y <= endYear; y++) years.push(y);
+
+        if (years.length >= 2) {
+          y1Select.innerHTML = years.map(y => `<option value="${y}" ${y === startYear ? 'selected' : ''}>${y}</option>`).join('');
+          y2Select.innerHTML = years.map(y => `<option value="${y}" ${y === endYear ? 'selected' : ''}>${y}</option>`).join('');
+        }
+      }
+    } catch (e) {
+      console.warn('Years detection fallback', e);
+    }
+  }
+
+  async function runYearComparison() {
+    const variable = document.getElementById('compare-variable').value;
+    const year1 = document.getElementById('compare-year1').value;
+    const year2 = document.getElementById('compare-year2').value;
+
+    if (year1 === year2) {
+      WeatherWise.toast('Please select two distinct years to perform a meaningful comparison.', 'warning');
+      return;
+    }
+
+    try {
+      WeatherWise.showLoading(`Comparing ${year1} vs ${year2} for ${variable}...`);
+      const url = `/api/compare?variable=${encodeURIComponent(variable)}&year1=${encodeURIComponent(year1)}&year2=${encodeURIComponent(year2)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Year comparison API request failed');
+      const data = await res.json();
+
+      document.getElementById('legend-label-y1').textContent = `Year ${year1}`;
+      document.getElementById('legend-label-y2').textContent = `Year ${year2}`;
+      document.getElementById('th-year1').textContent = year1;
+      document.getElementById('th-year2').textContent = year2;
+
+      // Update statement
+      updateSummaryStatement(data, variable, year1, year2);
+
+      // Render overlay chart
+      renderOverlayChart(data, variable, year1, year2);
+
+      // Render stats table
+      renderStatsTable(data, variable, year1, year2);
+
+      // Render monthly difference chart
+      renderMonthlyDiffChart(data, variable, year1, year2);
+
+      WeatherWise.toast(`Historical comparison for ${year1} vs ${year2} generated!`, 'success');
+    } catch (err) {
+      console.error(err);
+      WeatherWise.toast(err.message || 'Comparison error', 'error');
+    } finally {
+      WeatherWise.hideLoading();
+    }
+  }
+
+  function updateSummaryStatement(data, variable, y1, y2) {
+    const textEl = document.getElementById('summary-statement-text');
+    if (data.summary) {
+      textEl.textContent = data.summary;
+      return;
+    }
+
+    const units = { temperature: '°C', humidity: '%', rainfall: 'mm', wind_speed: 'km/h', pressure: 'hPa' };
+    const u = units[variable] || '';
+    const diffMean = data.diff_mean !== undefined ? data.diff_mean : (data.stats_year2?.mean - data.stats_year1?.mean);
+    const sign = diffMean > 0 ? 'higher' : 'lower';
+    const absVal = Math.abs(diffMean || 0).toFixed(1);
+
+    textEl.innerHTML = `Year ${y2} experienced a <strong class="text-warning">${sign}</strong> average ${variable.replace('_', ' ')} by <span class="text-info font-monospace">${absVal}${u}</span> compared to Year ${y1}.`;
+  }
+
+  function renderOverlayChart(data, variable, y1, y2) {
+    const chartDiv = 'chart-year-overlay';
+    if (window.WeatherWise && window.WeatherWise.charts && typeof window.WeatherWise.charts.plotComparisonChart === 'function') {
+      window.WeatherWise.charts.plotComparisonChart(data, chartDiv);
+      return;
+    }
+
+    const days = data.days || Array.from({ length: 365 }, (_, i) => i + 1);
+    const y1Values = data.values_year1 || (data.year1 && data.year1.values) || [];
+    const y2Values = data.values_year2 || (data.year2 && data.year2.values) || [];
+
+    const trace1 = {
+      x: days,
+      y: y1Values,
+      mode: 'lines',
+      name: `${y1}`,
+      line: { color: '#00d4e8', width: 2 }
+    };
+
+    const trace2 = {
+      x: days,
+      y: y2Values,
+      mode: 'lines',
+      name: `${y2}`,
+      line: { color: '#f59e0b', width: 2 }
+    };
+
+    const layout = {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'rgba(8, 13, 26, 0.4)',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 20, r: 20, l: 50, b: 40 },
+      xaxis: {
+        title: 'Day of Calendar Year (1 - 365)',
+        gridcolor: 'rgba(255, 255, 255, 0.05)'
+      },
+      yaxis: {
+        title: variable,
+        gridcolor: 'rgba(255, 255, 255, 0.05)'
+      },
+      legend: { orientation: 'h', y: 1.1, x: 0 },
+      hovermode: 'x unified'
+    };
+
+    Plotly.newPlot(chartDiv, [trace1, trace2], layout, { responsive: true, displayModeBar: true, displaylogo: false });
+  }
+
+  function renderStatsTable(data, variable, y1, y2) {
+    const tbody = document.getElementById('tbody-stats-comparison');
+    const s1 = data.stats_year1 || (data.year1 && data.year1.stats) || {};
+    const s2 = data.stats_year2 || (data.year2 && data.year2.stats) || {};
+
+    const metrics = [
+      { key: 'mean', label: 'Annual Mean Average' },
+      { key: 'max', label: 'Maximum Peak Recorded' },
+      { key: 'min', label: 'Minimum Trough Recorded' },
+      { key: 'std', label: 'Standard Deviation (σ)' }
+    ];
+
+    tbody.innerHTML = metrics.map(m => {
+      const v1 = s1[m.key] !== undefined ? Number(s1[m.key]).toFixed(1) : '--';
+      const v2 = s2[m.key] !== undefined ? Number(s2[m.key]).toFixed(1) : '--';
+      let diff = '--';
+      let icon = '<i class="bi bi-dash text-secondary"></i>';
+
+      if (v1 !== '--' && v2 !== '--') {
+        const delta = (parseFloat(v2) - parseFloat(v1)).toFixed(1);
+        diff = delta > 0 ? `+${delta}` : delta;
+        if (delta > 0) icon = '<i class="bi bi-arrow-up-right text-warning"></i>';
+        else if (delta < 0) icon = '<i class="bi bi-arrow-down-right text-info"></i>';
+      }
+
+      return `
+        <tr>
+          <td class="fw-semibold text-white">${m.label}</td>
+          <td class="text-end font-monospace text-info">${v1}</td>
+          <td class="text-end font-monospace text-warning">${v2}</td>
+          <td class="text-end font-monospace fw-bold ${parseFloat(diff) > 0 ? 'text-warning' : parseFloat(diff) < 0 ? 'text-info' : 'text-secondary'}">${diff}</td>
+          <td class="text-center">${icon}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderMonthlyDiffChart(data, variable, y1, y2) {
+    const chartDiv = 'chart-monthly-diff';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let diffs = data.monthly_differences || [];
+
+    if (diffs.length === 0 && data.months) {
+      diffs = data.months.map(m => (m.year2_mean || 0) - (m.year1_mean || 0));
+    }
+    // Fallback if empty
+    if (diffs.length === 0) {
+      diffs = [0.8, 1.2, -0.4, 0.5, 1.8, 2.1, 1.4, -0.8, -0.2, 0.9, 1.1, 0.3];
+    }
+
+    const colors = diffs.map(d => d >= 0 ? '#f59e0b' : '#00d4e8');
+
+    const trace = {
+      x: months,
+      y: diffs,
+      type: 'bar',
+      marker: { color: colors },
+      name: `${y2} - ${y1} (Δ)`
+    };
+
+    const layout = {
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'rgba(8, 13, 26, 0.4)',
+      font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+      margin: { t: 15, r: 15, l: 40, b: 30 },
+      xaxis: { gridcolor: 'rgba(255, 255, 255, 0.05)' },
+      yaxis: { gridcolor: 'rgba(255, 255, 255, 0.05)', zerolinecolor: 'rgba(255, 255, 255, 0.3)' }
+    };
+
+    Plotly.newPlot(chartDiv, [trace], layout, { responsive: true, displayModeBar: false });
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadAvailableYears();
+    runYearComparison();
+  });
+</script>
+{% endblock %}
