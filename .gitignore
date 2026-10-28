@@ -15,6 +15,14 @@ weatherwise.db-journal
 weatherwise.db-wal
 weatherwise.db-shm
 
+# Secrets, Environment Variables & API Keys
+.env
+.env.*
+*.key
+*.token
+*secret*
+credentials.json
+
 # IDE / Editor
 .vscode/
 .idea/

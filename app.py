@@ -45,16 +45,6 @@ from weather_engine import (
     get_api_key_setting,
     save_api_key_setting,
 )
-from gemini_weather import (
-    get_gemini_api_key,
-    save_gemini_api_key,
-    generate_gemini_weather_briefing,
-)
-from grok_weather import (
-    get_grok_api_key,
-    save_grok_api_key,
-    generate_grok_weather_briefing,
-)
 
 warnings.filterwarnings('ignore')
 
@@ -300,70 +290,6 @@ def api_weather_preparedness():
         force_demo = (mode == 'demo')
         data = get_preparedness_guide(city, lat=lat, lon=lon, force_demo=force_demo)
         return jsonify(safe_json(data))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/weather/grok-insights', methods=['GET'])
-@app.route('/api/weather/ai-insights', methods=['GET'])
-@app.route('/api/weather/gemini-insights', methods=['GET'])
-def api_weather_ai_insights():
-    """Generates natural language meteorological intelligence via xAI Grok (with fallback)."""
-    try:
-        city = request.args.get('city', 'London')
-        mode = request.args.get('mode', 'live')
-        force_demo = (mode == 'demo')
-        current = fetch_live_forecast(city, force_demo=force_demo)
-        weekly = fetch_weekly_forecast(city, force_demo=force_demo)
-
-        # Prioritize Grok AI
-        grok_key = get_grok_api_key()
-        gemini_key = get_gemini_api_key()
-
-        if grok_key or not gemini_key:
-            insights = generate_grok_weather_briefing(city, current, weekly)
-        else:
-            insights = generate_gemini_weather_briefing(city, current, weekly)
-
-        return jsonify(safe_json(insights))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/settings/grok-key', methods=['GET', 'POST'])
-@app.route('/api/settings/ai-key', methods=['GET', 'POST'])
-def grok_key_settings():
-    """Retrieves or configures the xAI Grok API Key."""
-    try:
-        if request.method == 'POST':
-            payload = request.get_json() or {}
-            key = payload.get('api_key', '')
-            res = save_grok_api_key(key)
-            return jsonify(res)
-        else:
-            key = get_grok_api_key()
-            masked = key[:6] + "..." + key[-4:] if len(key) > 10 else ("***" if key else "")
-            return jsonify({
-                "has_key": bool(key),
-                "masked_key": masked
-            })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/settings/gemini-key', methods=['GET', 'POST'])
-def gemini_key_settings():
-    """Retrieves or configures the Google Gemini API Key."""
-    try:
-        if request.method == 'POST':
-            payload = request.get_json() or {}
-            key = payload.get('api_key', '')
-            res = save_gemini_api_key(key)
-            return jsonify(res)
-        else:
-            key = get_gemini_api_key()
-            masked = key[:6] + "..." + key[-4:] if len(key) > 10 else ("***" if key else "")
-            return jsonify({
-                "has_key": bool(key),
-                "masked_key": masked
-            })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
